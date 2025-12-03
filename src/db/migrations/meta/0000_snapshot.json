@@ -1,0 +1,758 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.agendamentos": {
+      "name": "agendamentos",
+      "schema": "",
+      "columns": {
+        "id_agendamento": {
+          "name": "id_agendamento",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "agendamentos_id_agendamento_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "data_horario_inicio": {
+          "name": "data_horario_inicio",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_horario_fim": {
+          "name": "data_horario_fim",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "status_agendamento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pendente'"
+        },
+        "id_sala": {
+          "name": "id_sala",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_turma": {
+          "name": "id_turma",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_agend_periodo": {
+          "name": "idx_agend_periodo",
+          "columns": [
+            {
+              "expression": "data_horario_inicio",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "data_horario_fim",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_agend_sala": {
+          "name": "idx_agend_sala",
+          "columns": [
+            {
+              "expression": "id_sala",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fk_agend_sala": {
+          "name": "fk_agend_sala",
+          "tableFrom": "agendamentos",
+          "tableTo": "salas",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_sala"
+          ],
+          "columnsTo": [
+            "id_sala"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_agend_usuario": {
+          "name": "fk_agend_usuario",
+          "tableFrom": "agendamentos",
+          "tableTo": "usuarios",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_usuario"
+          ],
+          "columnsTo": [
+            "id_usuario"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_agend_turma": {
+          "name": "fk_agend_turma",
+          "tableFrom": "agendamentos",
+          "tableTo": "turmas",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_turma"
+          ],
+          "columnsTo": [
+            "id_turma"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.unidades": {
+      "name": "unidades",
+      "schema": "",
+      "columns": {
+        "id_unidade": {
+          "name": "id_unidade",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "unidades_id_unidade_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "descricao_unidade": {
+          "name": "descricao_unidade",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.areas": {
+      "name": "areas",
+      "schema": "",
+      "columns": {
+        "id_area": {
+          "name": "id_area",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "areas_id_area_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "descricao_area": {
+          "name": "descricao_area",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.salas": {
+      "name": "salas",
+      "schema": "",
+      "columns": {
+        "id_sala": {
+          "name": "id_sala",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "salas_id_sala_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "codigo_sala": {
+          "name": "codigo_sala",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao_sala": {
+          "name": "descricao_sala",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capacidade": {
+          "name": "capacidade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_area": {
+          "name": "id_area",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_unidade": {
+          "name": "id_unidade",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fk_salas_area": {
+          "name": "fk_salas_area",
+          "tableFrom": "salas",
+          "tableTo": "areas",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_area"
+          ],
+          "columnsTo": [
+            "id_area"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_salas_unidade": {
+          "name": "fk_salas_unidade",
+          "tableFrom": "salas",
+          "tableTo": "unidades",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_unidade"
+          ],
+          "columnsTo": [
+            "id_unidade"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.perfis": {
+      "name": "perfis",
+      "schema": "",
+      "columns": {
+        "id_perfil": {
+          "name": "id_perfil",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "perfis_id_perfil_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "descricao_perfil": {
+          "name": "descricao_perfil",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.usuarios": {
+      "name": "usuarios",
+      "schema": "",
+      "columns": {
+        "id_usuario": {
+          "name": "id_usuario",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "usuarios_id_usuario_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "uid_firebase": {
+          "name": "uid_firebase",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matricula": {
+          "name": "matricula",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_unidade": {
+          "name": "id_unidade",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_perfil": {
+          "name": "id_perfil",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_usuarios_uid": {
+          "name": "idx_usuarios_uid",
+          "columns": [
+            {
+              "expression": "uid_firebase",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fk_usuarios_unidade": {
+          "name": "fk_usuarios_unidade",
+          "tableFrom": "usuarios",
+          "tableTo": "unidades",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_unidade"
+          ],
+          "columnsTo": [
+            "id_unidade"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_usuarios_perfil": {
+          "name": "fk_usuarios_perfil",
+          "tableFrom": "usuarios",
+          "tableTo": "perfis",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_perfil"
+          ],
+          "columnsTo": [
+            "id_perfil"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "usuarios_uid_firebase_key": {
+          "columns": [
+            "uid_firebase"
+          ],
+          "nullsNotDistinct": false,
+          "name": "usuarios_uid_firebase_key"
+        },
+        "usuarios_email_key": {
+          "columns": [
+            "email"
+          ],
+          "nullsNotDistinct": false,
+          "name": "usuarios_email_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.equipamentos": {
+      "name": "equipamentos",
+      "schema": "",
+      "columns": {
+        "id_equipamento": {
+          "name": "id_equipamento",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "equipamentos_id_equipamento_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantidade": {
+          "name": "quantidade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_sala": {
+          "name": "id_sala",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fk_equipamentos_sala": {
+          "name": "fk_equipamentos_sala",
+          "tableFrom": "equipamentos",
+          "tableTo": "salas",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_sala"
+          ],
+          "columnsTo": [
+            "id_sala"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.turmas": {
+      "name": "turmas",
+      "schema": "",
+      "columns": {
+        "id_turma": {
+          "name": "id_turma",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "turmas_id_turma_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "codigo_turma": {
+          "name": "codigo_turma",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao_turma": {
+          "name": "descricao_turma",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodo": {
+          "name": "periodo",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_area": {
+          "name": "id_area",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_unidade": {
+          "name": "id_unidade",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fk_turmas_area": {
+          "name": "fk_turmas_area",
+          "tableFrom": "turmas",
+          "tableTo": "areas",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_area"
+          ],
+          "columnsTo": [
+            "id_area"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fk_turmas_unidade": {
+          "name": "fk_turmas_unidade",
+          "tableFrom": "turmas",
+          "tableTo": "unidades",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_unidade"
+          ],
+          "columnsTo": [
+            "id_unidade"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.checklists": {
+      "name": "checklists",
+      "schema": "",
+      "columns": {
+        "id_checklist": {
+          "name": "id_checklist",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "checklists_id_checklist_seq",
+            "increment": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "startWith": "1",
+            "cache": "1",
+            "cycle": false,
+            "schema": "public"
+          }
+        },
+        "data_checklist": {
+          "name": "data_checklist",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "material_ok": {
+          "name": "material_ok",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_agendamento": {
+          "name": "id_agendamento",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fk_checklist_agendamento": {
+          "name": "fk_checklist_agendamento",
+          "tableFrom": "checklists",
+          "tableTo": "agendamentos",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "id_agendamento"
+          ],
+          "columnsTo": [
+            "id_agendamento"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.status_agendamento": {
+      "name": "status_agendamento",
+      "values": [
+        "pendente",
+        "confirmado",
+        "concluido"
+      ],
+      "schema": "public"
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {}
+  }
+}
