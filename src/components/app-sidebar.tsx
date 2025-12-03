@@ -6,12 +6,11 @@ import {
   FileChartColumn,
   GraduationCap,
   Users,
-  Loader2
 } from "lucide-react"
 
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
-import { getDadosUsuarioSidebar } from "@/app/actions/auth" // Importe sua server action
+import { getDadosUsuarioSidebar } from "@/app/actions/auth"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -24,7 +23,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// DADOS ESTÁTICOS (Menu Completo)
+// DADOS ESTÁTICOS
 const DATA_MENU = {
   teams: [
     {
@@ -62,7 +61,7 @@ const DATA_MENU = {
       ],
     },
     {
-      title: "Cadastros", // <--- Este item será filtrado
+      title: "Cadastros",
       url: "#",
       icon: Users,
       items: [
@@ -84,48 +83,46 @@ const DATA_MENU = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Estado para guardar o menu filtrado
-  const [menuItems, setMenuItems] = React.useState(DATA_MENU.navMain)
   
-  // Estado para guardar dados do usuário real (para o rodapé)
+  // ESTRATÉGIA: Começa com o menu "Padrão" (Filtrado para Docente)
+  // Assim o usuário vê algo imediatamente, sem esperar loading.
+  const menuPadrao = DATA_MENU.navMain.filter(item => item.title !== "Cadastros")
+  
+  const [menuItems, setMenuItems] = React.useState(menuPadrao)
+  
+  // Estado inicial mais limpo para não parecer "quebrado" enquanto carrega
   const [userData, setUserData] = React.useState({
-    name: "Carregando...",
-    email: "...",
+    name: "Usuário", 
+    email: "",
     avatar: "",
   })
 
-  const [loading, setLoading] = React.useState(true)
+  // REMOVI O STATE DE LOADING QUE BLOQUEAVA A TELA
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // 1. Busca dados no Banco (Neon)
+        // Atualiza email visualmente rápido
+        setUserData(prev => ({ ...prev, email: user.email || "" }))
+
+        // Busca dados no Banco (Neon) em segundo plano
         const infoBanco = await getDadosUsuarioSidebar(user.uid)
         
         if (infoBanco) {
-          // Atualiza o rodapé com nome real
+          // Atualiza o nome quando chegar
           setUserData({
             name: infoBanco.nomeUsuario,
             email: user.email || "",
-            avatar: "", // Se tiver foto no futuro, coloca aqui
+            avatar: "",
           })
 
-          // 2. LÓGICA DE FILTRO DA SIDEBAR
-          const cargo = infoBanco.cargo // "Administrador" ou "Docente"
-
-          if (cargo === "Administrador") {
-            // Admin vê TUDO
-            setMenuItems(DATA_MENU.navMain)
-          } else {
-            // Docente vê apenas o que NÃO é "Cadastros"
-            const menuFiltrado = DATA_MENU.navMain.filter(item => 
-              item.title !== "Cadastros"
-            )
-            setMenuItems(menuFiltrado)
+          // SE for Admin, nós "adicionamos" o menu que faltava
+          if (infoBanco.cargo === "Administrador") {
+            setMenuItems(DATA_MENU.navMain) // Mostra tudo
           }
+          // Se for Docente, não precisa fazer nada, pois já iniciou filtrado.
         }
       }
-      setLoading(false)
     })
 
     return () => unsubscribe()
@@ -134,19 +131,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        {/* O TeamSwitcher já se vira sozinho para buscar os dados dele */}
-        <TeamSwitcher  /> 
+        <TeamSwitcher /> 
       </SidebarHeader>
       
       <SidebarContent>
-        {loading ? (
-           <div className="flex justify-center p-4">
-             <Loader2 className="animate-spin" />
-           </div>
-        ) : (
-           /* Passamos o menuItems (que pode estar filtrado) em vez do estático */
-           <NavMain items={menuItems} />
-        )}
+        {/* REMOVI O LOADER. Agora exibe o menu direto. */}
+        <NavMain items={menuItems} />
       </SidebarContent>
 
       <SidebarFooter>
