@@ -120,3 +120,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* globals.css */
+
+/* Remove a cor azul padrão e usa as cores do Shadcn (CSS Variables) */
+.fc .fc-button-primary {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  text-transform: capitalize;
+  font-weight: 500;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+  border-color: hsl(var(--primary) / 0.9);
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active, 
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+/* Ajusta o título do toolbar */
+.fc .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* Remove a borda azul de foco e adiciona o ring do tailwind */
+.fc .fc-button:focus {
+  box-shadow: none;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Estiliza o dia "hoje" */
+.fc .fc-day-today {
+  background-color: hsl(var(--muted) / 0.3) !important;
+}
+
+/* Arredondamento das bordas */
+.fc-theme-standard .fc-scrollgrid {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
