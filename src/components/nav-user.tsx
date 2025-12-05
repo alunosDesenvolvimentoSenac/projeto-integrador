@@ -1,9 +1,9 @@
 "use client"
 
-import {
-  ChevronsUpDown,
-  LogOut,
-} from "lucide-react"
+import { ChevronsUpDown, LogOut, } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase" 
 
 import {
   Avatar,
@@ -35,6 +35,16 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.replace("/") 
+    } catch (error) {
+      console.error("Erro ao deslogar:", error)
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -75,7 +85,8 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut />
               Log out
             </DropdownMenuItem>
