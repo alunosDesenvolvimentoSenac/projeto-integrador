@@ -16,16 +16,17 @@ const TURNOS = {
 
 // --- LEITURA (MANTENHA IGUAL) ---
 export async function listarSalas() {
-  /* ... (código anterior mantido) ... */
   try {
     const result = await db.select({
       id: salas.idSala,
-      nome: salas.descricaoSala
+      nome: salas.descricaoSala,
+      codigo: salas.codigoSala // <--- Buscando o código
     })
     .from(salas)
     .orderBy(salas.descricaoSala);
     return result;
   } catch (error) {
+    console.error("Erro ao listar salas:", error);
     return [];
   }
 }

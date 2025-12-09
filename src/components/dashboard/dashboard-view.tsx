@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight, Plus, FlaskConical, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, FlaskConical, Loader2, Filter, Clock, ListFilter } from "lucide-react"
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
@@ -17,7 +17,7 @@ import { DayDetailsDialog } from "./day-details-dialog"
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog"
 
 import { buscarAgendamentosDoMes } from "@/app/actions/agendamento"
-import { getDadosUsuarioSidebar } from "@/app/actions/auth" // Action existente para checar perfil
+import { getDadosUsuarioSidebar } from "@/app/actions/auth"
 import { auth } from "@/lib/firebase"
 import { AgendamentoComDetalhes, Sala } from "@/types"
 
@@ -28,12 +28,18 @@ interface DashboardViewProps {
 export function DashboardView({ salasIniciais }: DashboardViewProps) {
   const today = new Date();
   
+  // --- ESTADOS ---
   const [date, setDate] = React.useState(new Date());
   const [selectedLab, setSelectedLab] = React.useState(salasIniciais[0]?.id.toString() || "");
   const [appointments, setAppointments] = React.useState<AgendamentoComDetalhes[]>([]);
   const [loadingApps, setLoadingApps] = React.useState(false);
-  const [isAdmin, setIsAdmin] = React.useState(false); // Novo estado
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
+  // --- FILTROS ---
+  const [filterPeriodo, setFilterPeriodo] = React.useState<string>("todos");
+  const [filterStatus, setFilterStatus] = React.useState<string>("todos");
+
+  // Modais
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, appointments: AgendamentoComDetalhes[] } | null>(null);
   const [isNovoAgendamentoOpen, setIsNovoAgendamentoOpen] = React.useState(false);
 
@@ -42,13 +48,11 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
 
   // --- EFEITOS ---
 
-  // 1. Checa se é Admin ao carregar
   React.useEffect(() => {
     const checkRole = async () => {
         const user = auth.currentUser;
         if (user) {
             const dados = await getDadosUsuarioSidebar(user.uid);
-            // Ajuste aqui conforme sua tabela: se for 'Administrador' ou booleano
             if (dados && dados.cargo === 'Administrador') { 
                 setIsAdmin(true);
             }
@@ -60,7 +64,6 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
     return () => unsubscribe();
   }, []);
 
-  // 2. Busca Agendamentos
   const fetchApps = React.useCallback(async () => {
     if (!selectedLab) return;
     setLoadingApps(true);
@@ -128,8 +131,16 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
   const getDailyApps = (day: number) => {
     return appointments.filter(a => {
         if (!a.dataInicio) return false;
+        
         const appDate = new Date(a.dataInicio);
-        return appDate.getDate() === day && appDate.getMonth() === date.getMonth();
+        const matchDate = appDate.getDate() === day && appDate.getMonth() === date.getMonth();
+        if (!matchDate) return false;
+
+        // Filtros Ativos
+        if (filterPeriodo !== "todos" && a.periodo !== filterPeriodo) return false;
+        if (filterStatus !== "todos" && a.status !== filterStatus) return false;
+
+        return true;
     });
   };
 
@@ -158,8 +169,11 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
 
         <div className="flex flex-1 flex-col p-4 md:p-6 overflow-hidden h-[calc(100vh-64px)]">
           
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-             <div className="flex items-center gap-4 w-full md:w-auto">
+          {/* BARRA DE FERRAMENTAS */}
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
+             
+             {/* Esquerda: Navegação Mês */}
+             <div className="flex items-center gap-4 w-full xl:w-auto">
                 <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1 h-10">
                   <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8"><ChevronLeft className="h-5 w-5" /></Button>
                   <div className="w-[1px] h-5 bg-border mx-1" />
@@ -171,10 +185,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 {loadingApps && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
              </div>
 
-             <div className="flex items-center gap-2 w-full md:w-auto ml-auto">
-                <div className="relative w-full md:w-[320px]">
+             {/* Direita: Laboratório + Filtros + Novo (AGRUPADOS E PADRONIZADOS) */}
+             <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
+                
+                {/* 1. Laboratório (Estilo Base) */}
+                <div className="relative w-full sm:w-[280px]">
                     <Select value={selectedLab} onValueChange={setSelectedLab}>
-                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
+                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
                           <div className="flex items-center gap-2 truncate">
                               <div className="bg-primary/10 p-1 rounded-md shrink-0">
                                   <FlaskConical className="h-4 w-4 text-primary" />
@@ -184,28 +201,76 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                         </SelectTrigger>
                         <SelectContent>
                         {salasIniciais.map((lab) => (
-                            <SelectItem key={lab.id} value={String(lab.id)}>{lab.nome}</SelectItem>
+                            <SelectItem key={lab.id} value={String(lab.id)}>
+                                {/* AQUI ESTÁ A MUDANÇA VISUAL */}
+                                <span className=" text-red-500 font-medium  mr-2">{lab.codigo}</span>
+                                {lab.nome}
+                            </SelectItem>
                         ))}
                         </SelectContent>
                     </Select>
                 </div>
 
+                {/* 2. Filtro Período (MESMO ESTILO DO LAB) */}
+                <div className="w-full sm:w-[140px]">
+                    <Select value={filterPeriodo} onValueChange={setFilterPeriodo}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
+                            <div className="flex items-center gap-2 truncate">
+                                <div className="bg-zinc-100 p-1 rounded-md shrink-0">
+                                    <Clock className="h-4 w-4 text-zinc-500" />
+                                </div>
+                                <SelectValue placeholder="Período" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="todos">Todos Períodos</SelectItem>
+                            <SelectItem value="Manhã">Manhã</SelectItem>
+                            <SelectItem value="Tarde">Tarde</SelectItem>
+                            <SelectItem value="Noite">Noite</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* 3. Filtro Status (MESMO ESTILO DO LAB) */}
+                <div className="w-full sm:w-[140px]">
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
+                            <div className="flex items-center gap-2 truncate">
+                                <div className="bg-zinc-100 p-1 rounded-md shrink-0">
+                                    <ListFilter className="h-4 w-4 text-zinc-500" />
+                                </div>
+                                <SelectValue placeholder="Status" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="todos">Todos Status</SelectItem>
+                            <SelectItem value="pendente">Pendentes</SelectItem>
+                            <SelectItem value="confirmado">Confirmados</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* 4. Botão Novo */}
                 <Button 
-                    className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0"
+                    className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                     onClick={handleOpenGenericBooking}
                 >
-                    <Plus className="mr-2 h-5 w-5" /> Novo Agendamento
+                    <Plus className="mr-2  w-5" /> Novo Agendamento
                 </Button>
              </div>
           </div>
 
+          {/* LEGENDAS */}
           <div className="flex flex-wrap items-center gap-4 mb-3 px-1">
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Manhã</div>
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></span> Tarde</div>
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm"></span> Noite</div>
+             <div className="h-4 w-[1px] bg-zinc-300 mx-2 hidden sm:block"></div>
+             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-amber-600 border-dashed"></span> Pendente</div>
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground ml-auto sm:ml-4"><span className="w-2.5 h-2.5 rounded border border-zinc-300 bg-red-50 dark:bg-red-900/20 shadow-sm"></span> Fim de Semana</div>
           </div>
 
+          {/* GRID CALENDÁRIO */}
           <div className="flex-1 bg-white dark:bg-zinc-900 border rounded-xl shadow-sm flex flex-col overflow-hidden">
              <div className="grid grid-cols-7 border-b bg-zinc-50/80 dark:bg-zinc-900/50">
                 {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((d) => (
@@ -265,11 +330,10 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
           data={selectedDayDetails}
           monthName={monthName}
           onAgendarClick={handleBookingFromDetails}
-          isAdmin={isAdmin} // <--- Passando a permissão
-          // Callback para quando aprovar/rejeitar e precisar atualizar o calendário
+          isAdmin={isAdmin}
           onActionSuccess={() => {
-             setSelectedDayDetails(null); // Fecha o modal
-             fetchApps(); // Recarrega os dados
+             setSelectedDayDetails(null); 
+             fetchApps(); 
           }}
         />
 
