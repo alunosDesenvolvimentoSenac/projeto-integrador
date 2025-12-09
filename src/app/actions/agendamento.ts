@@ -212,3 +212,32 @@ export async function responderSolicitacao(
     return { success: false, message: "Erro ao processar solicitação." };
   }
 }
+
+export async function excluirAgendamento(
+  idAgendamento: number, 
+  uidUsuarioLogado: string
+) {
+  try {
+    // 1. Verifica se é Admin
+    const adminCheck = await db.select({ isAdmin: perfis.isAdmin })
+      .from(usuarios)
+      .innerJoin(perfis, eq(usuarios.idPerfil, perfis.idPerfil))
+      .where(eq(usuarios.uidFirebase, uidUsuarioLogado))
+      .limit(1);
+
+    if (!adminCheck[0] || !adminCheck[0].isAdmin) {
+        return { success: false, message: "Apenas administradores podem excluir agendamentos confirmados." };
+    }
+
+    // 2. Deleta o registro
+    await db.delete(agendamentos)
+        .where(eq(agendamentos.idAgendamento, idAgendamento));
+        
+    revalidatePath("/dashboard");
+    return { success: true, message: "Agendamento excluído do sistema." };
+
+  } catch (error) {
+    console.error("Erro ao excluir:", error);
+    return { success: false, message: "Erro ao tentar excluir." };
+  }
+}

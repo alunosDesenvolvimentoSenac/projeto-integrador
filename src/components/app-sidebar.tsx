@@ -41,7 +41,7 @@ const DATA_MENU = {
       items: [
         {
           title: "Agendar Laboratório",
-          url: "/agendamentos/novo",
+          url: "/dashboard",
         },
         {
            title: "Minha Agenda",
@@ -97,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: "",
   })
 
-  // REMOVI O STATE DE LOADING QUE BLOQUEAVA A TELA
+
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

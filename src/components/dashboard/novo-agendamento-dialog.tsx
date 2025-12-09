@@ -10,13 +10,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea" // Se estiver usando Textarea
 import { Calendar } from "@/components/ui/calendar"
 import { Loader2 } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { toast } from "sonner" // <--- IMPORTAR O TOAST
 
 interface NovoAgendamentoProps {
   isOpen: boolean
@@ -25,7 +26,6 @@ interface NovoAgendamentoProps {
   nomeSala: string
   initialDate?: Date
   initialPeriod?: string
-  // Nova prop:
   onSuccess?: () => void
 }
 
@@ -36,7 +36,7 @@ export function NovoAgendamentoDialog({
   nomeSala, 
   initialDate, 
   initialPeriod,
-  onSuccess // Recebe a função aqui
+  onSuccess 
 }: NovoAgendamentoProps) {
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -45,7 +45,7 @@ export function NovoAgendamentoDialog({
   })
   
   const [periodo, setPeriodo] = useState<string>("")
-  const [disciplina, setDisciplina] = useState("")
+  const [observacao, setObservacao] = useState("")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -60,14 +60,19 @@ export function NovoAgendamentoDialog({
   }, [isOpen, initialDate, initialPeriod])
 
   async function handleSave() {
-    if (!dateRange?.from || !periodo || !disciplina) {
-      alert("Preencha o período, a data e a disciplina")
+    // Validação com Toast de Erro
+    if (!dateRange?.from || !periodo || !observacao) {
+      toast.warning("Atenção", {
+        description: "Preencha o período, a data e a observação."
+      })
       return
     }
 
     const user = auth.currentUser
     if (!user) {
-      alert("Erro de autenticação")
+      toast.error("Erro de autenticação", {
+        description: "Você precisa estar logado para realizar esta ação."
+      })
       return
     }
 
@@ -78,23 +83,29 @@ export function NovoAgendamentoDialog({
         periodo: periodo as "Manhã" | "Tarde" | "Noite",
         idSala: idSalaSelecionada,
         uidUsuario: user.uid,
-        disciplina: disciplina
+        disciplina: ""
       })
 
       if (result.success) {
-        alert(result.message)
+        // SUCESSO!
+        toast.success("Sucesso!", {
+            description: result.message,
+        })
         
-        // CHAMA O REFRESH
         if (onSuccess) onSuccess();
-        
         onClose()
-        setDisciplina("") 
+        setObservacao("") 
       } else {
-        alert(result.message)
+        // ERRO DO BACKEND (ex: Conflito)
+        toast.error("Não foi possível agendar", {
+            description: result.message
+        })
       }
     } catch (e) {
       console.error(e)
-      alert("Erro inesperado")
+      toast.error("Erro inesperado", {
+        description: "Ocorreu um erro de conexão. Tente novamente."
+      })
     } finally {
       setLoading(false)
     }
@@ -146,18 +157,19 @@ export function NovoAgendamentoDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Disciplina / Turma</Label>
-            <Input 
-                placeholder="Ex: Lógica de Programação" 
-                value={disciplina} 
-                onChange={e => setDisciplina(e.target.value)} 
+            <Label>Observação / Disciplina</Label>
+            <Textarea 
+                placeholder="Ex: Aula de Robótica - Precisaremos do Projetor" 
+                value={observacao} 
+                onChange={e => setObservacao(e.target.value)} 
+                className="resize-none"
             />
           </div>
 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSave} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {dateRange?.from && dateRange.to && dateRange.from !== dateRange.to ? "Agendar Vários Dias" : "Agendar Dia"}

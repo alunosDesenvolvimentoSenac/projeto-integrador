@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight, Plus, FlaskConical, Loader2, Filter, Clock, ListFilter } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, FlaskConical, Loader2, Clock, ListFilter } from "lucide-react"
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+// Componentes Personalizados
 import { AppSidebar } from "@/components/app-sidebar"
 import { EventPill } from "./event-pill" 
 import { DayDetailsDialog } from "./day-details-dialog"
@@ -43,11 +44,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, appointments: AgendamentoComDetalhes[] } | null>(null);
   const [isNovoAgendamentoOpen, setIsNovoAgendamentoOpen] = React.useState(false);
 
+  // Pré-preenchimento
   const [preSelectedDate, setPreSelectedDate] = React.useState<Date | undefined>(undefined)
   const [preSelectedPeriod, setPreSelectedPeriod] = React.useState<string | undefined>(undefined)
 
   // --- EFEITOS ---
 
+  // 1. Checa se é Admin
   React.useEffect(() => {
     const checkRole = async () => {
         const user = auth.currentUser;
@@ -64,6 +67,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
     return () => unsubscribe();
   }, []);
 
+  // 2. Busca Agendamentos
   const fetchApps = React.useCallback(async () => {
     if (!selectedLab) return;
     setLoadingApps(true);
@@ -128,6 +132,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
     return days;
   }, [date]);
 
+  // Filtra agendamentos para exibição no dia
   const getDailyApps = (day: number) => {
     return appointments.filter(a => {
         if (!a.dataInicio) return false;
@@ -136,7 +141,6 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
         const matchDate = appDate.getDate() === day && appDate.getMonth() === date.getMonth();
         if (!matchDate) return false;
 
-        // Filtros Ativos
         if (filterPeriodo !== "todos" && a.periodo !== filterPeriodo) return false;
         if (filterStatus !== "todos" && a.status !== filterStatus) return false;
 
@@ -149,6 +153,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
       <AppSidebar />
       <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950">
         
+        {/* HEADER */}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
@@ -167,13 +172,14 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
           </div>
         </header>
 
+        {/* ÁREA PRINCIPAL */}
         <div className="flex flex-1 flex-col p-4 md:p-6 overflow-hidden h-[calc(100vh-64px)]">
           
           {/* BARRA DE FERRAMENTAS */}
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
              
-             {/* Esquerda: Navegação Mês */}
-             <div className="flex items-center gap-4 w-full xl:w-auto">
+             {/* Esquerda: Mês e Navegação */}
+             <div className="flex items-center justify-between md:justify-start gap-4 w-full xl:w-auto">
                 <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1 h-10">
                   <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8"><ChevronLeft className="h-5 w-5" /></Button>
                   <div className="w-[1px] h-5 bg-border mx-1" />
@@ -182,16 +188,16 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 <h2 className="text-3xl font-bold capitalize text-zinc-800 dark:text-zinc-100 tracking-tight whitespace-nowrap">
                     {monthName}
                 </h2>
-                {loadingApps && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+                {loadingApps && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground hidden md:block" />}
              </div>
 
-             {/* Direita: Laboratório + Filtros + Novo (AGRUPADOS E PADRONIZADOS) */}
+             {/* Direita: Controles (Empilhados no mobile, linha no desktop) */}
              <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
                 
-                {/* 1. Laboratório (Estilo Base) */}
+                {/* 1. Laboratório */}
                 <div className="relative w-full sm:w-[280px]">
                     <Select value={selectedLab} onValueChange={setSelectedLab}>
-                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
+                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full font-medium">
                           <div className="flex items-center gap-2 truncate">
                               <div className="bg-primary/10 p-1 rounded-md shrink-0">
                                   <FlaskConical className="h-4 w-4 text-primary" />
@@ -202,8 +208,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                         <SelectContent>
                         {salasIniciais.map((lab) => (
                             <SelectItem key={lab.id} value={String(lab.id)}>
-                                {/* AQUI ESTÁ A MUDANÇA VISUAL */}
-                                <span className=" text-red-500 font-medium  mr-2">{lab.codigo}</span>
+                                <span className="font-mono font-bold text-muted-foreground mr-2">{lab.codigo}</span>
                                 {lab.nome}
                             </SelectItem>
                         ))}
@@ -211,13 +216,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     </Select>
                 </div>
 
-                {/* 2. Filtro Período (MESMO ESTILO DO LAB) */}
+                {/* 2. Filtro Período */}
                 <div className="w-full sm:w-[140px]">
                     <Select value={filterPeriodo} onValueChange={setFilterPeriodo}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
                             <div className="flex items-center gap-2 truncate">
-                                <div className="bg-zinc-100 p-1 rounded-md shrink-0">
-                                    <Clock className="h-4 w-4 text-zinc-500" />
+                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0">
+                                    <Clock className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
                                 </div>
                                 <SelectValue placeholder="Período" />
                             </div>
@@ -231,13 +236,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     </Select>
                 </div>
 
-                {/* 3. Filtro Status (MESMO ESTILO DO LAB) */}
+                {/* 3. Filtro Status */}
                 <div className="w-full sm:w-[140px]">
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
                             <div className="flex items-center gap-2 truncate">
-                                <div className="bg-zinc-100 p-1 rounded-md shrink-0">
-                                    <ListFilter className="h-4 w-4 text-zinc-500" />
+                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0">
+                                    <ListFilter className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
                                 </div>
                                 <SelectValue placeholder="Status" />
                             </div>
@@ -255,13 +260,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                     onClick={handleOpenGenericBooking}
                 >
-                    <Plus className="mr-2  w-5" /> Novo Agendamento
+                    <Plus className="mr-1 h-5 w-5" /> Novo Agendamento
                 </Button>
              </div>
           </div>
 
-          {/* LEGENDAS */}
-          <div className="flex flex-wrap items-center gap-4 mb-3 px-1">
+          {/* LEGENDAS (Escondidas no mobile para economizar espaço) */}
+          <div className="hidden sm:flex flex-wrap items-center gap-4 mb-3 px-1">
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Manhã</div>
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></span> Tarde</div>
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm"></span> Noite</div>
@@ -270,8 +275,10 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground ml-auto sm:ml-4"><span className="w-2.5 h-2.5 rounded border border-zinc-300 bg-red-50 dark:bg-red-900/20 shadow-sm"></span> Fim de Semana</div>
           </div>
 
-          {/* GRID CALENDÁRIO */}
+          {/* GRID DO CALENDÁRIO */}
           <div className="flex-1 bg-white dark:bg-zinc-900 border rounded-xl shadow-sm flex flex-col overflow-hidden">
+             
+             {/* Cabeçalho */}
              <div className="grid grid-cols-7 border-b bg-zinc-50/80 dark:bg-zinc-900/50">
                 {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((d) => (
                   <div key={d} className="py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -281,8 +288,10 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 ))}
              </div>
 
+             {/* Dias */}
              <div className="grid grid-cols-7 flex-1 auto-rows-fr">
                 {calendarDays.map((slot, i) => {
+                  // Se não for mês atual, renderiza vazio (invisível)
                   if (!slot.currentMonth) return <div key={i} className="border-b border-r bg-transparent" />;
 
                   const apps = getDailyApps(slot.day);
@@ -296,15 +305,15 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                       key={i}
                       onClick={() => !isWeekend && handleDayClick(slot.day, slot.month, apps)}
                       className={cn(
-                        "relative border-b border-r p-2 transition-all flex flex-col gap-1 min-h-[80px] select-none",
+                        "relative border-b border-r p-1 md:p-2 transition-all flex flex-col gap-1 min-h-[80px] md:min-h-[120px] select-none",
                         isWeekend 
                             ? "bg-red-50/40 dark:bg-red-950/10 cursor-not-allowed" 
-                            : "bg-background cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                            : "bg-background cursor-pointer active:bg-zinc-100 md:hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                       )}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-center md:justify-between">
                          <span className={cn(
-                           "text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full transition-colors",
+                           "text-xs md:text-sm font-medium h-6 w-6 md:h-7 md:w-7 flex items-center justify-center rounded-full transition-colors",
                            isToday ? "bg-primary text-primary-foreground shadow-md font-bold" : "text-zinc-600 dark:text-zinc-400",
                            isWeekend && "text-zinc-400 dark:text-zinc-600"
                          )}>
@@ -313,8 +322,28 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                       </div>
                       
                       {!isWeekend && (
-                          <div className="flex flex-col gap-1 mt-1 overflow-hidden">
-                            {apps.map((app) => <EventPill key={app.id} app={app} />)}
+                          <div className="flex flex-col gap-1 mt-1 overflow-hidden h-full justify-end md:justify-start">
+                            
+                            {/* Desktop: Pílulas com texto */}
+                            <div className="hidden md:flex flex-col gap-1">
+                                {apps.slice(0, 4).map((app) => <EventPill key={app.id} app={app} />)}
+                                {apps.length > 4 && (
+                                    <span className="text-[10px] text-muted-foreground pl-1">+ mais {apps.length - 4}</span>
+                                )}
+                            </div>
+
+                            {/* Mobile: Bolinhas coloridas */}
+                            <div className="flex md:hidden flex-wrap gap-1 justify-center content-end pb-1">
+                                {apps.map((app) => {
+                                    const dotColor = app.status === 'pendente' 
+                                        ? "bg-amber-400"
+                                        : app.periodo === 'Manhã' ? "bg-emerald-500"
+                                        : app.periodo === 'Tarde' ? "bg-orange-500"
+                                        : "bg-indigo-500";
+                                    return <div key={app.id} className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
+                                })}
+                            </div>
+
                           </div>
                       )}
                     </div>
