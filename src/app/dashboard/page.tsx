@@ -18,13 +18,20 @@ import {
   X, 
   Check, 
   Lock,
-  Unlock
+  Unlock,
+  CalendarDays, 
+  Copy,
+  Trash2
 } from "lucide-react"
 
 // --- IMPORTS DE AUTENTICAÇÃO ---
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 import { getDadosUsuarioSidebar } from "@/app/actions/auth"
+
+// --- LIBS DE DATA ---
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import {
@@ -58,7 +65,6 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -72,6 +78,14 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/sonner" 
 import { toast } from "sonner"
+
+// --- IMPORTS DO CALENDÁRIO VISUAL (SHADCN) ---
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 // --- TIPOS ---
 type Periodo = "Manhã" | "Tarde" | "Noite"
@@ -93,6 +107,7 @@ interface Agendamento {
   docente: string
   disciplina: string
   labId?: number
+  groupId?: string 
 }
 
 // DADOS ESTÁTICOS DOS LABORATÓRIOS
@@ -123,11 +138,13 @@ export default function Dashboard() {
   // MODAIS
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, year: number, appointments: Agendamento[] } | null>(null)
   const [isFormOpen, setIsFormOpen] = React.useState(false)
-  const [formData, setFormData] = React.useState<{
+  const [isRangeMode, setIsRangeMode] = React.useState(false) 
+  
+  const [formInitialDate, setFormInitialDate] = React.useState<{
     day: number, 
     month: number, 
-    year: number, 
-    periodo: Periodo,
+    year: number,
+    periodoPre?: Periodo, 
     labIdPre?: string 
   } | null>(null)
 
@@ -216,60 +233,170 @@ export default function Dashboard() {
     setSelectedDayDetails({ day, month, year, appointments: apps })
   }
 
-  const handleOpenAddForm = (periodo: Periodo) => {
+  // --- HABILITA O MODO RANGE APENAS PELO BOTÃO DE ADIÇÃO ---
+  const handleOpenAddForm = (periodo?: Periodo, enableRange: boolean = false) => {
     if (selectedLab === "0") return;
 
-    setSelectedDayDetails(null) 
+    let targetDay = today.getDate();
+    let targetMonth = today.getMonth();
+    let targetYear = today.getFullYear();
 
-    setFormData({
-        day: selectedDayDetails!.day,
-        month: selectedDayDetails!.month,
-        year: selectedDayDetails!.year,
-        periodo: periodo,
+    if (selectedDayDetails) {
+        targetDay = selectedDayDetails.day;
+        targetMonth = selectedDayDetails.month;
+        targetYear = selectedDayDetails.year;
+        setSelectedDayDetails(null) 
+    }
+
+    setFormInitialDate({
+        day: targetDay,
+        month: targetMonth,
+        year: targetYear,
+        periodoPre: periodo,
         labIdPre: selectedLab 
     })
+    setIsRangeMode(enableRange) 
     setIsFormOpen(true)
   }
 
-  const handleSaveAppointment = async (data: { docente: string, disciplina: string, labId: number }) => {
-    if (!formData) return;
-
+  // --- LÓGICA DE SALVAR INTELIGENTE E VALIDADA ---
+  const handleSaveAppointment = async (data: { 
+    docente: string, 
+    disciplina: string, 
+    labId: number,
+    startDetails: {d: number, m: number, y: number},
+    endDateStr: string, 
+    periodos: Periodo[]
+  }) => {
+    
     const initialStatus = currentUser?.role === 'ADMIN' ? 'confirmado' : 'pendente';
+    
+    const startDate = new Date(data.startDetails.y, data.startDetails.m, data.startDetails.d);
+    
+    const [endY, endM, endD] = data.endDateStr.split('-').map(Number);
+    const endDate = new Date(endY, endM - 1, endD);
 
-    const newAppointment: Agendamento = {
-      id: Math.random(),
-      dia: formData.day,
-      mes: formData.month,
-      ano: formData.year,
-      periodo: formData.periodo,
-      status: initialStatus,
-      docente: data.docente,
-      disciplina: data.disciplina || "Sem disciplina",
-      labId: data.labId
+    const actualEndDate = endDate < startDate ? startDate : endDate;
+
+    // --- 1. VERIFICAÇÃO DE CONFLITOS (NOVA LÓGICA) ---
+    // Percorre os dias simulados para ver se já existe algo no banco
+    for (let d = new Date(startDate); d <= actualEndDate; d.setDate(d.getDate() + 1)) {
+        const checkDia = d.getDate();
+        const checkMes = d.getMonth();
+        const checkAno = d.getFullYear();
+
+        for (const p of data.periodos) {
+            // Verifica se existe agendamento neste dia/turno/lab
+            const conflito = agendamentos.find(
+                (a) => 
+                    a.dia === checkDia && 
+                    a.mes === checkMes && 
+                    a.ano === checkAno && 
+                    a.periodo === p &&
+                    a.labId === data.labId // IMPORTANTE: Checa o laboratório atual
+            );
+
+            if (conflito) {
+                toast.error("Conflito de horário", {
+                    description: `O turno da ${p} no dia e mês ${checkDia}/${checkMes + 1} já está reservado para ${conflito.docente}.`,
+                    icon: <AlertCircle className="h-4 w-4 text-red-500" />
+                });
+                return; // INTERROMPE O SALVAMENTO IMEDIATAMENTE
+            }
+        }
     }
 
-    setAgendamentos(prev => [...prev, newAppointment])
+    // --- 2. CRIAÇÃO DOS AGENDAMENTOS (SE PASSOU NA VALIDAÇÃO) ---
+    const newAppointments: Agendamento[] = [];
+    const isBatch = actualEndDate.getTime() > startDate.getTime() || data.periodos.length > 1;
+    const groupId = isBatch ? Math.random().toString(36).substr(2, 9) : undefined;
+
+    // Reinicia data para o loop de criação
+    const createDateLoop = new Date(startDate);
+
+    // DATA DE HOJE (ZERADA PARA COMPARAÇÃO)
+    const todayZero = new Date();
+    todayZero.setHours(0,0,0,0);
+
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    for (let d = createDateLoop; d <= actualEndDate; d.setDate(d.getDate() + 1)) {
+        const currentDia = d.getDate();
+        const currentMes = d.getMonth();
+        const currentAno = d.getFullYear();
+
+        // Verifica se o dia do loop é "Hoje"
+        const isLoopToday = d.getTime() === todayZero.getTime();
+
+        data.periodos.forEach(p => {
+              // *** LÓGICA DE PULAR TURNO VENCIDO NO MODO SÉRIE ***
+              let skip = false;
+              if (isLoopToday) {
+                  if (p === 'Manhã' && currentHour >= 12) skip = true;
+                  if (p === 'Tarde' && currentHour >= 18) skip = true;
+                  if (p === 'Noite' && currentHour >= 23) skip = true;
+              }
+
+              if (!skip) {
+                  newAppointments.push({
+                    id: Math.random(),
+                    dia: currentDia,
+                    mes: currentMes,
+                    ano: currentAno,
+                    periodo: p,
+                    status: initialStatus,
+                    docente: data.docente,
+                    disciplina: data.disciplina || "Sem disciplina",
+                    labId: data.labId,
+                    groupId: groupId
+                  });
+              }
+        });
+    }
+
+    if (newAppointments.length === 0) {
+        toast.error("Nenhum horário disponível", {
+            description: "Todos os horários selecionados para os dias escolhidos já passaram."
+        });
+        return;
+    }
+
+    setAgendamentos(prev => [...prev, ...newAppointments])
     setIsFormOpen(false)
     
     if (initialStatus === 'pendente') {
         toast.message("Solicitação enviada!", {
-            description: "Seu agendamento aguarda aprovação do administrador.",
+            description: isBatch ? `Série de agendamentos enviada para aprovação.` : "Seu agendamento aguarda aprovação.",
             icon: <Clock className="h-4 w-4 text-orange-500" />
         })
     } else {
-        toast.success("Agendamento confirmado com sucesso!")
+        toast.success(isBatch ? "Série de agendamentos criada!" : "Agendamento confirmado!")
     }
   }
 
-  const handleDeleteAppointment = (id: number) => {
-    setAgendamentos(prev => prev.filter(a => a.id !== id))
-    
-    if (selectedDayDetails) {
-       const updatedList = selectedDayDetails.appointments.filter(a => a.id !== id)
-       setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList })
+  // --- LÓGICA DE EXCLUSÃO ---
+  const handleDeleteAppointment = (id: number, deleteAllInGroup: boolean = false) => {
+    const targetApp = agendamentos.find(a => a.id === id);
+    if (!targetApp) return;
+
+    if (deleteAllInGroup && targetApp.groupId) {
+        setAgendamentos(prev => prev.filter(a => a.groupId !== targetApp.groupId))
+        
+        if (selectedDayDetails) {
+             const updatedList = selectedDayDetails.appointments.filter(a => a.groupId !== targetApp.groupId)
+             setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList })
+        }
+        toast.success("Série de agendamentos removida.")
+    } else {
+        setAgendamentos(prev => prev.filter(a => a.id !== id))
+        
+        if (selectedDayDetails) {
+           const updatedList = selectedDayDetails.appointments.filter(a => a.id !== id)
+           setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList })
+        }
+        toast.success("Agendamento removido.")
     }
-    
-    toast.success("Agendamento removido.")
   }
 
   const handleApproveAppointment = (id: number) => {
@@ -376,11 +503,8 @@ export default function Dashboard() {
                     toast.error("Selecione um laboratório antes de criar um novo agendamento.")
                     return
                 }
-                setFormData({ 
-                  day: today.getDate(), month: today.getMonth(), year: today.getFullYear(), 
-                  periodo: "Manhã", labIdPre: selectedLab 
-                })
-                setIsFormOpen(true)
+                // TRUE AQUI: Habilita modo range (Editável)
+                handleOpenAddForm(undefined, true);
               }}>
                 <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
               </Button>
@@ -456,7 +580,7 @@ export default function Dashboard() {
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="0" className="text-muted-foreground font-medium">Preencher sala...</SelectItem>
+                            <SelectItem value="0" className="text-muted-foreground font-medium">Preencher laboratório...</SelectItem>
                             {LABORATORIOS.map((lab) => (
                                 <SelectItem key={lab.id} value={String(lab.id)}>{lab.nome}</SelectItem>
                             ))}
@@ -571,7 +695,8 @@ export default function Dashboard() {
           onClose={() => setSelectedDayDetails(null)}
           data={selectedDayDetails}
           monthName={monthName}
-          onAddClick={handleOpenAddForm}
+          // FALSE AQUI: Clicar no modal do dia é SEMPRE dia único (FIXO)
+          onAddClick={(periodo: Periodo) => handleOpenAddForm(periodo, false)}
           onDelete={handleDeleteAppointment}
           onApprove={handleApproveAppointment}
           currentUser={currentUser}
@@ -581,10 +706,11 @@ export default function Dashboard() {
         <AppointmentFormDialog 
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
-          formData={formData}
+          formData={formInitialDate}
           onSave={handleSaveAppointment}
           laboratorios={LABORATORIOS}
           currentUser={currentUser}
+          isRangeMode={isRangeMode} // Passando o modo
         />
 
         <Toaster />
@@ -608,26 +734,36 @@ function EventPill({ app }: { app: Agendamento }) {
       <div className={cn("text-[11px] px-2 py-0.5 rounded-md border truncate font-medium flex items-center gap-1.5 shadow-sm", bgStyles[app.status])}>
         <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColors[app.periodo])} />
         <span className="truncate leading-tight">{app.docente}</span>
+        {app.groupId && <Copy className="h-2.5 w-2.5 opacity-50 ml-auto" />}
       </div>
     )
 }
   
-// --- MODAL DE DETALHES ---
+// --- MODAL DE DETALHES E EXCLUSÃO ---
 function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDelete, onApprove, currentUser }: any) {
-    const [deleteConfirmation, setDeleteConfirmation] = React.useState<number | null>(null)
+    const [deleteConfirmation, setDeleteConfirmation] = React.useState<{id: number, groupId?: string} | null>(null)
+    const [deleteStep, setDeleteStep] = React.useState<'select-scope' | 'confirm'>('select-scope')
+    const [scopeToDelete, setScopeToDelete] = React.useState<'single' | 'series' | null>(null)
     
+    // Resetar estados ao abrir/fechar
+    React.useEffect(() => {
+        if (!isOpen) {
+             setDeleteConfirmation(null);
+             setDeleteStep('select-scope');
+             setScopeToDelete(null);
+        }
+    }, [isOpen]);
+
     if (!data) return null
     const periodosOrder: Periodo[] = ["Manhã", "Tarde", "Noite"]
     const isAdmin = currentUser?.role === "ADMIN"
 
-    // CORES DOS TURNOS
     const badgeColors: Record<string, string> = {
         Manhã: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-100/80",
         Tarde: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100/80",
         Noite: "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-300 hover:bg-zinc-100/80"
     }
 
-    // CORES DOS STATUS (NOVO)
     const statusBadgeStyles = {
         disponivel: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-100/80",
         encerrado: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-100/80",
@@ -652,6 +788,23 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
         if (period === 'Noite' && currentHour >= 23) return true; 
 
         return false;
+    }
+
+    const handleInitialDelete = (app: Agendamento) => {
+        setDeleteConfirmation({ id: app.id, groupId: app.groupId })
+        if (app.groupId) {
+            setDeleteStep('select-scope')
+        } else {
+            setScopeToDelete('single')
+            setDeleteStep('confirm')
+        }
+    }
+
+    const confirmDeletion = () => {
+        if (!deleteConfirmation) return;
+        const deleteSeries = scopeToDelete === 'series';
+        onDelete(deleteConfirmation.id, deleteSeries);
+        setDeleteConfirmation(null);
     }
 
     return (
@@ -683,14 +836,12 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                 : "bg-zinc-50/50 border-dashed border-zinc-200 hover:border-zinc-300 dark:bg-zinc-900/50 dark:border-zinc-800"
                         )}>
                         <div className="flex items-center justify-between mb-2">
-                            {/* ESQUERDA: Turno + Status Badge */}
+                            {/* ESQUERDA */}
                             <div className="flex items-center gap-2">
-                                {/* Badge do Turno */}
                                 <Badge variant="secondary" className={cn("px-2.5 py-0.5 text-sm font-medium border-0", badgeColors[periodo])}>
                                     <Clock className="mr-1.5 h-3.5 w-3.5" />{periodo}
                                 </Badge>
                                 
-                                {/* Status Disponível / Encerrado (Sem agendamento) */}
                                 {!agendamento && (
                                     <Badge variant="secondary" className={cn("px-2.5 py-0.5 text-xs font-medium border-0", expired ? statusBadgeStyles.encerrado : statusBadgeStyles.disponivel)}>
                                         {expired ? <Lock className="mr-1.5 h-3 w-3"/> : <Unlock className="mr-1.5 h-3 w-3" />}
@@ -698,16 +849,21 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                     </Badge>
                                 )}
 
-                                {/* Status Confirmado / Pendente (Com agendamento) */}
                                 {agendamento && (
                                     <Badge variant="secondary" className={cn("px-2.5 py-0.5 text-xs font-medium border-0", agendamento.status === 'confirmado' ? statusBadgeStyles.confirmado : statusBadgeStyles.pendente)}>
                                         {agendamento.status === 'confirmado' ? <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> : <AlertCircle className="mr-1.5 h-3.5 w-3.5" />}
                                         <span className="uppercase">{agendamento.status}</span>
                                     </Badge>
                                 )}
+
+                                {agendamento && agendamento.groupId && (
+                                    <div title="Parte de uma série de agendamentos">
+                                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                )}
                             </div>
                             
-                            {/* DIREITA: Botões de Ação */}
+                            {/* DIREITA */}
                             <div className="flex items-center gap-1">
                                 {agendamento && isAdmin && agendamento.status === 'pendente' && (
                                     <Button 
@@ -723,7 +879,7 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                     <Button 
                                             variant="ghost" size="icon" 
                                             className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-                                            onClick={() => setDeleteConfirmation(agendamento.id)} title="Remover Agendamento"
+                                            onClick={() => handleInitialDelete(agendamento)} title="Remover Agendamento"
                                     >
                                             <X className="h-4 w-4" />
                                     </Button>
@@ -758,77 +914,327 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
             </DialogContent>
         </Dialog>
 
-        <AlertDialog open={!!deleteConfirmation} onOpenChange={() => setDeleteConfirmation(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Remover Agendamento?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Isso excluirá permanentemente o agendamento do sistema.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction 
-                        className="bg-red-600 hover:bg-red-700"
-                        onClick={() => {
-                            if (deleteConfirmation) onDelete(deleteConfirmation)
-                            setDeleteConfirmation(null)
-                        }}
-                    >
-                        Remover
-                    </AlertDialogAction>
-                </AlertDialogFooter>
+        {/* ALERT DIALOG PERSONALIZADO PARA EXCLUSÃO */}
+        <AlertDialog open={!!deleteConfirmation} onOpenChange={(val) => !val && setDeleteConfirmation(null)}>
+            <AlertDialogContent className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-4 top-4 h-6 w-6 text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm z-10"
+                    onClick={() => setDeleteConfirmation(null)}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+
+                {deleteStep === 'select-scope' && (
+                    <div className="pt-2">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-center">Remover Agendamento em Série</AlertDialogTitle>
+                            <AlertDialogDescription className="text-center">
+                                Este agendamento se repete em outros dias. O que você deseja remover?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                            <Button 
+                                variant="outline" 
+                                className="h-auto py-4 px-3 flex flex-col gap-1 items-center justify-center text-center hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                                onClick={() => {
+                                    setScopeToDelete('single')
+                                    setDeleteStep('confirm')
+                                }}
+                            >
+                                <span className="font-semibold text-foreground text-base">Apenas este dia</span>
+                                <span className="text-xs text-muted-foreground font-normal">Mantém os outros dias agendados.</span>
+                            </Button>
+                            
+                            <Button 
+                                variant="outline" 
+                                className="h-auto py-4 px-3 flex flex-col gap-1 items-center justify-center text-center hover:bg-red-50 dark:hover:bg-red-950/20 border-red-100 dark:border-red-900/50"
+                                onClick={() => {
+                                    setScopeToDelete('series')
+                                    setDeleteStep('confirm')
+                                }}
+                            >
+                                <span className="font-semibold text-red-600 dark:text-red-400 text-base">Toda a série</span>
+                                <span className="text-xs text-muted-foreground font-normal">Exclui todos os dias vinculados.</span>
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {deleteStep === 'confirm' && (
+                    <div className="pt-2">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-center">Confirmação Final</AlertDialogTitle>
+                            <AlertDialogDescription className="text-center">
+                                Tem certeza que deseja remover <strong>{scopeToDelete === 'series' ? 'todos os agendamentos da série' : 'este agendamento'}</strong>?
+                                <br/>Esta ação não poderá ser desfeita.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="mt-6 sm:justify-center">
+                            <AlertDialogAction 
+                                className="bg-red-600 hover:bg-red-700 w-full sm:w-auto min-w-[150px]"
+                                onClick={confirmDeletion}
+                            >
+                                Confirmar Exclusão
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </div>
+                )}
             </AlertDialogContent>
         </AlertDialog>
       </>
     )
 }
 
-// --- FORMULÁRIO DE ADIÇÃO ---
-function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios, currentUser }: any) {
+// --- FORMULÁRIO DE ADIÇÃO (VALIDAÇÃO DE DATA E TURNO CORRIGIDA) ---
+function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios, currentUser, isRangeMode }: any) {
     const [docente, setDocente] = React.useState("")
     const [disciplina, setDisciplina] = React.useState("")
     const [labId, setLabId] = React.useState("")
     
+    // Novo Estado de Data (String YYYY-MM-DD)
+    const [startDate, setStartDate] = React.useState<Date | undefined>(undefined)
+    const [endDate, setEndDate] = React.useState<Date | undefined>(undefined)
+
+    const [selectedPeriodos, setSelectedPeriodos] = React.useState<Periodo[]>([])
+
     const isAdmin = currentUser?.role === "ADMIN"
+    
+    // CORREÇÃO: Pegar data local (sem UTC) para validar o "hoje" corretamente
+    const getLocalTodayStr = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    const todayStr = getLocalTodayStr();
+    
+    // HOJE (ZERADO PARA COMPARAÇÃO VISUAL)
+    const today = new Date();
+    today.setHours(0,0,0,0);
   
     React.useEffect(() => {
-        if(isOpen) {
+        if(isOpen && formData) {
             if (currentUser) {
                 setDocente(currentUser.nome)
             } else {
                 setDocente("") 
             }
             setDisciplina("")
-            setLabId(formData?.labIdPre || "")
+            setLabId(formData.labIdPre || "")
+            
+            if (formData.periodoPre) {
+                setSelectedPeriodos([formData.periodoPre])
+            } else {
+                setSelectedPeriodos([])
+            }
+
+            const y = formData.year;
+            // CRIA DATA A PARTIR DO FORMDATA (CUIDADO COM MÊS: 0-11)
+            const initialDate = new Date(y, formData.month, formData.day);
+            setStartDate(initialDate);
+            
+            // SE FOR MODO RANGE, DATA FINAL COMEÇA COMO DIA SEGUINTE
+            // SE FOR MODO SINGLE, DATA FINAL É O PRÓPRIO DIA
+            if (isRangeMode) {
+                const nextDay = new Date(initialDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                setEndDate(nextDay);
+            } else {
+                setEndDate(initialDate);
+            }
         }
-    }, [isOpen, formData, currentUser])
+    }, [isOpen, formData, currentUser, isRangeMode])
+
+    // Handler para mudança da data inicial
+    const handleStartDateSelect = (date: Date | undefined) => {
+        if (!date) return;
+        setStartDate(date);
+
+        // Se data final for menor ou igual à nova data inicial, empurra ela pra frente (dia + 1)
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        if (!endDate || endDate < nextDay) {
+            setEndDate(nextDay);
+        }
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        if(!docente || !labId) return
-        onSave({ docente, disciplina, labId: Number(labId) })
+        if(!docente || !labId || selectedPeriodos.length === 0 || !startDate || !endDate) {
+            toast.error("Preencha todos os campos obrigatórios.")
+            return
+        }
+
+        // Formata para enviar ao onSave (mantendo compatibilidade com o resto do código)
+        // OBS: Usamos a string YYYY-MM-DD para o endDateStr
+        const yEnd = endDate.getFullYear();
+        const mEnd = String(endDate.getMonth() + 1).padStart(2, '0');
+        const dEnd = String(endDate.getDate()).padStart(2, '0');
+        const endDateFormatted = `${yEnd}-${mEnd}-${dEnd}`;
+        
+        onSave({ 
+            docente, 
+            disciplina, 
+            labId: Number(labId),
+            startDetails: { d: startDate.getDate(), m: startDate.getMonth(), y: startDate.getFullYear() }, 
+            endDateStr: endDateFormatted,
+            periodos: selectedPeriodos
+        })
+    }
+
+    // Função Lógica de Disponibilidade do Turno (USADA APENAS NO MODO SINGLE)
+    const isTurnoDisponivel = (turno: Periodo) => {
+        // Se a data escolhida for maior que hoje, tudo bem.
+        if (!startDate) return false;
+
+        const startZero = new Date(startDate);
+        startZero.setHours(0,0,0,0);
+
+        if (startZero > today) return true;
+        
+        // Se for data passada (protegido pelo min, mas por segurança)
+        if (startZero < today) return false;
+
+        // Se for HOJE, verifica a hora
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        if (turno === 'Manhã' && currentHour >= 12) return false;
+        if (turno === 'Tarde' && currentHour >= 18) return false;
+        if (turno === 'Noite' && currentHour >= 23) return false; 
+
+        return true;
+    }
+
+    const togglePeriodo = (p: Periodo) => {
+        // SE NÃO FOR RANGE, BLOQUEIA CLIQUE DE HORÁRIO PASSADO
+        // SE FOR RANGE, PERMITE CLICAR (A lógica de pular é feita no save)
+        if (!isRangeMode && !isTurnoDisponivel(p)) return; 
+
+        setSelectedPeriodos(prev => 
+            prev.includes(p) ? prev.filter(item => item !== p) : [...prev, p]
+        )
     }
   
     if (!formData) return null
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader><DialogTitle>Novo Agendamento</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader><DialogTitle>{isRangeMode ? "Novo Agendamento" : "Agendar para o dia"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="grid gap-4 py-4">
              
-             <div className="flex items-center p-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900 rounded-lg border text-sm">
-                <div className="flex-1 p-3 border-r border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-1">
-                    <span className="text-muted-foreground text-xs uppercase font-semibold">Data</span>
-                    <span className="font-medium text-base">{formData.day}/{formData.month + 1}/{formData.year}</span>
+             {isRangeMode ? (
+                // MODO SÉRIE/BOTÃO: Inputs Editáveis
+                <div className="grid grid-cols-2 gap-4">
+                     <div className="flex flex-col gap-2">
+                        <Label htmlFor="startDate" className="text-xs text-muted-foreground uppercase font-semibold">Data Inicial</Label>
+                         <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !startDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {startDate ? format(startDate, "PPP", { locale: ptBR }) : <span>Selecione...</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={startDate}
+                              onSelect={handleStartDateSelect}
+                              initialFocus
+                              locale={ptBR}
+                              // Bloqueia dias anteriores a hoje
+                              disabled={(date) => date < today}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                     </div>
+
+                     <div className="flex flex-col gap-2">
+                        <Label htmlFor="endDate" className="text-xs text-muted-foreground uppercase font-semibold">Data Final</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !endDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {endDate ? format(endDate, "PPP", { locale: ptBR }) : <span>Selecione...</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={endDate}
+                              onSelect={setEndDate}
+                              initialFocus
+                              locale={ptBR}
+                              // Bloqueia dias anteriores ou iguais à data inicial (garante mínimo 2 dias)
+                              disabled={(date) => !startDate || date <= startDate}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                     </div>
                 </div>
-                <div className="flex-1 p-3 flex flex-col items-center justify-center gap-1">
-                    <span className="text-muted-foreground text-xs uppercase font-semibold">Período</span>
-                    <span className="font-medium text-base">{formData.periodo}</span>
+             ) : (
+                // MODO CALENDÁRIO: Texto Fixo
+                <div className="flex flex-col gap-2">
+                    <Label className="text-xs text-muted-foreground uppercase font-semibold">Data do Agendamento</Label>
+                    <div className="flex items-center justify-center p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-md border text-sm font-medium w-full text-zinc-600 dark:text-zinc-400 cursor-not-allowed">
+                        <CalendarDays className="mr-2 h-4 w-4 opacity-50"/>
+                        {formData.day}/{formData.month + 1}/{formData.year}
+                    </div>
+                </div>
+             )}
+             
+             {/* SELEÇÃO DE TURNOS */}
+             <div className="flex flex-col gap-2">
+                <Label className="text-xs text-muted-foreground uppercase font-semibold mb-1">Turnos</Label>
+                <div className="flex gap-2">
+                    {(["Manhã", "Tarde", "Noite"] as Periodo[]).map((p) => {
+                        const isSelected = selectedPeriodos.includes(p);
+                        // No modo Range, sempre disponível visualmente (mas filtrado no backend/save)
+                        const isAvailable = isRangeMode ? true : isTurnoDisponivel(p);
+
+                        return (
+                            <div 
+                                key={p}
+                                onClick={() => togglePeriodo(p)}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-md border transition-all select-none text-sm font-medium",
+                                    !isAvailable && "opacity-40 cursor-not-allowed bg-zinc-100 dark:bg-zinc-800",
+                                    isAvailable && "cursor-pointer",
+                                    isAvailable && isSelected 
+                                        ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                                        : isAvailable && "bg-background hover:bg-zinc-50 dark:hover:bg-zinc-800 border-dashed"
+                                )}
+                                title={!isAvailable ? "Horário indisponível para hoje" : ""}
+                            >
+                                {isSelected ? <CheckCircle2 className="h-4 w-4"/> : <div className="w-4 h-4 rounded-full border border-zinc-300 dark:border-zinc-600"/>}
+                                {p}
+                            </div>
+                        )
+                    })}
                 </div>
              </div>
              
+             <Separator className="my-2"/>
+
+            {/* 1. NOME DOCENTE */}
              <div className="grid gap-2">
                 <Label htmlFor="docente" className="flex items-center justify-between">
                     Nome do Docente {isAdmin && <span className="text-xs text-blue-600 flex items-center gap-1"><Pencil className="w-3 h-3"/> Editável (Admin)</span>}
@@ -848,7 +1254,8 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                 </div>
              </div>
 
-             <div className="grid gap-2">
+             {/* 2. LABORATÓRIO */}
+             <div className="grid gap-2 w-full">
                 <Label htmlFor="lab">Laboratório</Label>
                 <Select value={labId} onValueChange={setLabId} disabled>
                   <SelectTrigger className="w-full bg-muted text-muted-foreground opacity-100 cursor-not-allowed">
@@ -860,6 +1267,7 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                 </Select>
              </div>
 
+             {/* 3. DISCIPLINA */}
              <div className="grid gap-2">
                 <Label htmlFor="disciplina">Disciplina / Curso <span className="text-xs font-normal text-muted-foreground ml-2">(Opcional)</span></Label>
                 <Input id="disciplina" placeholder="Ex: Algoritmos e Lógica" value={disciplina} onChange={(e) => setDisciplina(e.target.value)} />
@@ -870,7 +1278,9 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                    Cancelar
                  </Button>
                  <Button type="submit" className="w-full">
-                   Confirmar
+                   {isRangeMode 
+                    ? "Agendar Série"
+                    : "Confirmar"}
                  </Button>
              </div>
           </form>
