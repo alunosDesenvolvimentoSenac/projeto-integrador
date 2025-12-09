@@ -1,5 +1,5 @@
-import { FormularioDocente } from "@/components/formularioDocente"; // Verifique se o nome do arquivo está correto (formulario-docente ou formularioDocente)
-import { listarUnidades } from "@/app/actions/admin";
+import { FormularioUsuario } from "@/components/formulario-usuario"; 
+import { listarUnidades, listarPerfis } from "@/app/actions/admin";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -19,7 +19,10 @@ import {
 export default async function Page() {
   
   // Busca dados no servidor (Neon) antes de renderizar
-  const listaUnidades = await listarUnidades();
+  const [listaUnidades, listaPerfis] = await Promise.all([
+    listarUnidades(),
+    listarPerfis()
+  ]);
 
   return (
     
@@ -37,12 +40,12 @@ export default async function Page() {
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
                     <BreadcrumbLink href="/dashboard">
-                      Sistema de reserva de laboratórios
+                      Sistema LabManager
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Cadastrar Docentes</BreadcrumbPage>
+                    <BreadcrumbPage>Cadastrar Usuários</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -51,13 +54,13 @@ export default async function Page() {
           
           <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
             <div className="w-full max-w-sm">
-                {/* CORREÇÃO AQUI: O nome da prop deve ser 'unidades' */}
-                <FormularioDocente unidades={listaUnidades} />
+                {/* Passamos a lista de unidades e perfis para o componente */}
+                <FormularioUsuario unidades={listaUnidades} perfis={listaPerfis} />
             </div>
           </div>
           
         </SidebarInset>
       </SidebarProvider>
-    
+  
   );
 }

@@ -17,25 +17,31 @@ import {
 // Firebase e Server Action
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/lib/firebase"
-import { cadastrarDocenteNoBanco } from "@/app/actions/admin"
+import { cadastrarUsuarioNoBanco } from "@/app/actions/admin"
 
-// Tipagem das props para receber as unidades do banco
+// Tipagem das props para receber as unidades e perfis do banco
 interface FormularioProps extends React.ComponentPropsWithoutRef<"div"> {
   unidades: {
     idUnidade: number;
     descricaoUnidade: string;
-  }[]
+  }[];
+  perfis: {
+    idPerfil: number;
+    descricaoPerfil: string;
+  }[];
 }
 
-export function FormularioDocente({
+export function FormularioUsuario({
   className,
-  unidades = [], // Valor padrão para evitar erro no .map
+  unidades = [], 
+  perfis = [],
   ...props
 }: FormularioProps) {
   
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("")
+  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("") // Estado para o perfil
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -47,11 +53,14 @@ export function FormularioDocente({
       // Captura dados dos inputs
       const nome = formData.get("nome") as string
       const email = formData.get("email") as string
-      const password = formData.get("password") as string // Senha para o Firebase
+      const password = formData.get("password") as string 
 
       try {
         if (!unidadeSelecionada) {
-            throw new Error("Por favor selecione a Unidade ");
+            throw new Error("Por favor selecione a Unidade.");
+        }
+        if (!perfilSelecionado) {
+            throw new Error("Por favor selecione o Perfil.");
         }
 
         // 1. Cria usuário no Firebase (Client Side)
@@ -59,28 +68,26 @@ export function FormularioDocente({
         const uid = userCredential.user.uid
 
         // 2. Envia para o Banco de Dados (Server Action)
-        const result = await cadastrarDocenteNoBanco(
+        const result = await cadastrarUsuarioNoBanco(
             uid,
             nome,
             email,
-            Number(unidadeSelecionada)
+            Number(unidadeSelecionada),
+            Number(perfilSelecionado) // Envia o ID do perfil selecionado
         );
 
-        // Verifica se houve sucesso baseado no retorno da Server Action
-        // AQUI ESTAVA O ERRO: Verificamos se result existe E se success é true
         if (result && result.success === true) {
             alert(result.message);
             form.reset();
             setUnidadeSelecionada("");
+            setPerfilSelecionado("");
         } else {
-            // Se result veio null ou success false, cai aqui
             throw new Error(result?.message || "Erro desconhecido ao salvar no banco.");
         }
 
       } catch (error: any) {
         console.error("Erro capturado no catch:", error);
         
-        // Se o erro foi 'throw new Error', ele cai aqui
         let msg = error.message || "Erro desconhecido";
         
         if (error.code === 'auth/email-already-in-use') msg = "E-mail já cadastrado.";
@@ -96,8 +103,8 @@ export function FormularioDocente({
       <form onSubmit={handleSubmit}> 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
-            <h1 className="text-xl font-bold">Cadastro de Docentes</h1>
-            <p className="text-sm text-muted-foreground">Crie o acesso para um novo professor</p>
+            <h1 className="text-xl font-bold">Cadastro de Usuários</h1>
+            <p className="text-sm text-muted-foreground">Crie o acesso para um novo usuário no sistema</p>
           </div>
           <div className="flex flex-col gap-6">
             
@@ -121,12 +128,11 @@ export function FormularioDocente({
                 id="email"
                 name="email"
                 type="email"
-                placeholder="professor@senac.com.br"
+                placeholder="usuario@senac.com.br"
                 required
                 disabled={loading}
               />
             </div>
-            
             
             {/* Campo Unidade (Select) */}
             <div className="grid gap-2">
@@ -140,7 +146,6 @@ export function FormularioDocente({
                      <SelectValue placeholder="Selecione a unidade..." />
                  </SelectTrigger>
                  <SelectContent>
-                    {/* Renderização segura da lista */}
                     {unidades?.map((unidade) => (
                         <SelectItem key={unidade.idUnidade} value={String(unidade.idUnidade)}>
                             {unidade.descricaoUnidade}
@@ -150,9 +155,30 @@ export function FormularioDocente({
               </Select>
             </div>
 
+            {/* Campo Perfil (Select) - NOVO */}
+            <div className="grid gap-2">
+              <Label htmlFor="perfil">Perfil de Acesso</Label>
+              <Select 
+                value={perfilSelecionado} 
+                onValueChange={setPerfilSelecionado}
+                disabled={loading}
+              >
+                 <SelectTrigger className="w-full"> 
+                     <SelectValue placeholder="Selecione o perfil..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                    {perfis?.map((perfil) => (
+                        <SelectItem key={perfil.idPerfil} value={String(perfil.idPerfil)}>
+                            {perfil.descricaoPerfil}
+                        </SelectItem>
+                    ))}
+                 </SelectContent>
+              </Select>
+            </div>
+
             {/* Campo Senha */}
             <div className="grid gap-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password">Senha Provisória</Label>
               <Input
                 id="password"
                 name="password"
@@ -165,7 +191,7 @@ export function FormularioDocente({
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Cadastrando..." : "Cadastrar Docente"}
+              {loading ? "Cadastrando..." : "Cadastrar Usuário"}
             </Button>
           </div>
           
