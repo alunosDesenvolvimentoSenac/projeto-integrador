@@ -299,7 +299,7 @@ export default function Dashboard() {
 
             if (conflito) {
                 toast.error("Conflito de horário", {
-                    description: `O turno da ${p} no dia ${checkDia}/${checkMes + 1} já está reservado para ${conflito.docente}.`,
+                    description: `O turno da ${p} no dia e mês ${checkDia}/${checkMes + 1} já está reservado para ${conflito.docente}.`,
                     icon: <AlertCircle className="h-4 w-4 text-red-500" />
                 });
                 return;
