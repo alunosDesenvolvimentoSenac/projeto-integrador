@@ -178,18 +178,17 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
           
           {/* BARRA DE CONTROLES */}
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
-             {/* Esquerda */}
-             <div className="flex items-center gap-4 w-full xl:w-auto">
-                <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1 h-10">
-                  <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8"><ChevronLeft className="h-5 w-5" /></Button>
-                  <div className="w-[1px] h-5 bg-border mx-1" />
-                  <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8"><ChevronRight className="h-5 w-5" /></Button>
+             
+              {/* BARRA SUPERIOR */}
+          <div className="flex items-center justify-between h-1 w-full ">
+              <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1">
+                <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 text-zinc-500 hover:text-zinc-900"><ChevronLeft className="h-4 w-4" /></Button>
+                <div className="px-4 border-x border-zinc-100 dark:border-zinc-800 mx-1 min-w-[180px] flex justify-center">
+                    <span className="text-sm font-semibold capitalize text-zinc-700 dark:text-zinc-200 tracking-tight">{monthName}</span>
                 </div>
-                <h2 className="text-3xl font-bold capitalize text-zinc-800 dark:text-zinc-100 tracking-tight whitespace-nowrap">
-                    {monthName}
-                </h2>
-                {loadingApps && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground hidden md:block" />}
-             </div>
+                <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8 text-zinc-500 hover:text-zinc-900"><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+              </div>
 
              {/* Direita */}
              <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
@@ -226,7 +225,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="todos">Todos Períodos</SelectItem>
+                            <SelectItem value="todos">Período</SelectItem>
                             <SelectItem value="Manhã">Manhã</SelectItem>
                             <SelectItem value="Tarde">Tarde</SelectItem>
                             <SelectItem value="Noite">Noite</SelectItem>
@@ -245,7 +244,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="todos">Todos Status</SelectItem>
+                            <SelectItem value="todos">Status</SelectItem>
                             <SelectItem value="pendente">Pendentes</SelectItem>
                             <SelectItem value="confirmado">Confirmados</SelectItem>
                         </SelectContent>

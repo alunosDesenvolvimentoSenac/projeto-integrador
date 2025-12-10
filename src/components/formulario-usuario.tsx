@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,30 +17,25 @@ import {
 // Firebase e Server Action
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/lib/firebase"
-import { cadastrarUsuarioNoBanco } from "@/app/actions/admin"
+import { cadastrarDocenteNoBanco } from "@/app/actions/admin"
 
-// Tipagem das props atualizada para receber perfis
+// Tipagem das props para receber as unidades do banco
 interface FormularioProps extends React.ComponentPropsWithoutRef<"div"> {
   unidades: {
     idUnidade: number;
     descricaoUnidade: string;
-  }[];
-  perfis: {
-    idPerfil: number;
-    descricaoPerfil: string;
-  }[];
+  }[]
 }
 
-export function FormularioUsuario({
+export function FormularioDocente({
   className,
-  unidades = [], 
-  perfis = [],
+  unidades = [], // Valor padrão para evitar erro no .map
   ...props
 }: FormularioProps) {
   
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("")
-  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("") // Novo State
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -48,40 +44,47 @@ export function FormularioUsuario({
       const form = event.currentTarget;
       const formData = new FormData(form);
       
+      // Captura dados dos inputs
       const nome = formData.get("nome") as string
       const email = formData.get("email") as string
-      const password = formData.get("password") as string 
+      const password = formData.get("password") as string // Senha para o Firebase
 
       try {
-        if (!unidadeSelecionada) throw new Error("Selecione a Unidade.");
-        if (!perfilSelecionado) throw new Error("Selecione o Perfil de acesso.");
+        if (!unidadeSelecionada) {
+            throw new Error("Por favor selecione a Unidade ");
+        }
 
-        // 1. Cria usuário no Firebase
+        // 1. Cria usuário no Firebase (Client Side)
         const userCredential = await createUserWithEmailAndPassword(auth, email, password)
         const uid = userCredential.user.uid
 
-        // 2. Envia para o Banco com o Perfil Selecionado
-        const result = await cadastrarUsuarioNoBanco(
+        // 2. Envia para o Banco de Dados (Server Action)
+        const result = await cadastrarDocenteNoBanco(
             uid,
             nome,
             email,
-            Number(unidadeSelecionada),
-            Number(perfilSelecionado) // Envia o ID escolhido
+            Number(unidadeSelecionada)
         );
 
-        if (result && result.success) {
+        // Verifica se houve sucesso baseado no retorno da Server Action
+        // AQUI ESTAVA O ERRO: Verificamos se result existe E se success é true
+        if (result && result.success === true) {
             alert(result.message);
             form.reset();
             setUnidadeSelecionada("");
-            setPerfilSelecionado("");
         } else {
-            throw new Error(result?.message || "Erro desconhecido.");
+            // Se result veio null ou success false, cai aqui
+            throw new Error(result?.message || "Erro desconhecido ao salvar no banco.");
         }
 
       } catch (error: any) {
-        console.error(error);
+        console.error("Erro capturado no catch:", error);
+        
+        // Se o erro foi 'throw new Error', ele cai aqui
         let msg = error.message || "Erro desconhecido";
+        
         if (error.code === 'auth/email-already-in-use') msg = "E-mail já cadastrado.";
+        
         alert("Atenção: " + msg);
       } finally {
         setLoading(false);
@@ -93,66 +96,84 @@ export function FormularioUsuario({
       <form onSubmit={handleSubmit}> 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
-            <h1 className="text-xl font-bold">Cadastro de Usuários</h1>
-            <p className="text-sm text-muted-foreground">Cadastre Docentes, Coordenadores ou Admins</p>
+            <h1 className="text-xl font-bold">Cadastro de Docentes</h1>
+            <p className="text-sm text-muted-foreground">Crie o acesso para um novo professor</p>
           </div>
           <div className="flex flex-col gap-6">
             
+            {/* Campo Nome */}
             <div className="grid gap-2">
               <Label htmlFor="nome">Nome Completo</Label>
-              <Input id="nome" name="nome" type="text" placeholder="Ex: Ana Souza" required disabled={loading} />
+              <Input
+                id="nome"
+                name="nome"
+                type="text"
+                placeholder="Ex: Carlos Silva"
+                required
+                disabled={loading}
+              />
             </div>
 
+            {/* Campo Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">Email Corporativo</Label>
-              <Input id="email" name="email" type="email" placeholder="usuario@senac.com.br" required disabled={loading} />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="professor@senac.com.br"
+                required
+                disabled={loading}
+              />
             </div>
             
-            {/* SELECT UNIDADE */}
+            
+            {/* Campo Unidade (Select) */}
             <div className="grid gap-2">
               <Label htmlFor="unidade">Unidade</Label>
-              <Select value={unidadeSelecionada} onValueChange={setUnidadeSelecionada} disabled={loading}>
+              <Select 
+                value={unidadeSelecionada} 
+                onValueChange={setUnidadeSelecionada}
+                disabled={loading}
+              >
                  <SelectTrigger className="w-full"> 
                      <SelectValue placeholder="Selecione a unidade..." />
                  </SelectTrigger>
                  <SelectContent>
-                    {unidades?.map((item) => (
-                        <SelectItem key={item.idUnidade} value={String(item.idUnidade)}>
-                            {item.descricaoUnidade}
+                    {/* Renderização segura da lista */}
+                    {unidades?.map((unidade) => (
+                        <SelectItem key={unidade.idUnidade} value={String(unidade.idUnidade)}>
+                            {unidade.descricaoUnidade}
                         </SelectItem>
                     ))}
                  </SelectContent>
               </Select>
             </div>
 
-            {/* SELECT PERFIL (NOVO) */}
+            {/* Campo Senha */}
             <div className="grid gap-2">
-              <Label htmlFor="perfil">Perfil de Acesso</Label>
-              <Select value={perfilSelecionado} onValueChange={setPerfilSelecionado} disabled={loading}>
-                 <SelectTrigger className="w-full"> 
-                     <SelectValue placeholder="Selecione o nível de acesso..." />
-                 </SelectTrigger>
-                 <SelectContent>
-                    {perfis?.map((item) => (
-                        <SelectItem key={item.idPerfil} value={String(item.idPerfil)}>
-                            {item.descricaoPerfil}
-                        </SelectItem>
-                    ))}
-                 </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="password">Senha Provisória</Label>
-              <Input id="password" name="password" type="password" placeholder="******" required minLength={6} disabled={loading} />
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                required
+                minLength={6}
+                disabled={loading}
+              />
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Salvando..." : "Cadastrar Usuário"}
+              {loading ? "Cadastrando..." : "Cadastrar Docente"}
             </Button>
           </div>
+          
         </div>
       </form>
+      <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary  ">
+        Desenvolvido por Senac Minas - Curso de Desenvolvimento de Sistemas - 2025
+      </div>
     </div>
   )
 }

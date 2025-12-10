@@ -8,10 +8,6 @@ import {
   Users,
 } from "lucide-react"
 
-import { auth } from "@/lib/firebase"
-import { onAuthStateChanged } from "firebase/auth"
-import { getDadosUsuarioSidebar } from "@/app/actions/auth"
-
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
@@ -23,14 +19,20 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// DADOS ESTÁTICOS
-const DATA_MENU = {
+// This is sample data.
+const data = {
+  user: {
+    name: "shadcn",
+    email: "m@example.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
   teams: [
     {
       name: "Senac Minas",
       logo: GraduationCap,
-      plan: "LabManager",
+      plan: "Administrador",
     },
+    
   ],
   navMain: [
     {
@@ -41,11 +43,7 @@ const DATA_MENU = {
       items: [
         {
           title: "Agendar Laboratório",
-          url: "/dashboard",
-        },
-        {
-           title: "Minha Agenda",
-           url: "/agendamentos/meus",
+          url: "dashboard",
         },
       ],
     },
@@ -55,9 +53,14 @@ const DATA_MENU = {
       icon: FileChartColumn,
       items: [
         {
-          title: "Histórico",
-          url: "/relatorios/historico",
+          title: "Exibir Relatórios",
+          url: "#",
         },
+        {
+          title: "Histórico",
+          url: "#",
+        },
+       
       ],
     },
     {
@@ -77,8 +80,13 @@ const DATA_MENU = {
           title: "Cadastrar Laboratórios",
           url: "#",
         },
+       
       ],
     },
+
+    
+   
+    
   ],
 }
 
@@ -131,16 +139,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher /> 
+        <TeamSwitcher/>
       </SidebarHeader>
-      
       <SidebarContent>
-        {/* REMOVI O LOADER. Agora exibe o menu direto. */}
-        <NavMain items={menuItems} />
+        <NavMain items={data.navMain} />
+        
       </SidebarContent>
-
       <SidebarFooter>
-        <NavUser user={userData} />
+        <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
