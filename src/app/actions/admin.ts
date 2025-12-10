@@ -37,34 +37,3 @@ export async function cadastrarUsuarioNoBanco(
     return { success: false, message: "Erro ao vincular dados no sistema." };
   }
 }
-
-
-
-// Busca perfis para preencher o dropdown
-export async function listarPerfis() {
-  return await db.select().from(perfis);
-}
-
-// Salva o usuário no banco com o perfil selecionado
-export async function cadastrarUsuarioNoBanco(
-  uid: string, 
-  nome: string, 
-  email: string, 
-  idUnidade: number,
-  idPerfil: number // Agora recebemos o perfil dinamicamente
-) {
-  try {
-    await db.insert(usuarios).values({
-      uidFirebase: uid,
-      nome: nome,
-      email: email,
-      idUnidade: idUnidade,
-      idPerfil: idPerfil,
-    });
-
-    return { success: true, message: "Usuário cadastrado com sucesso!" };
-  } catch (error) {
-    console.error("Erro ao salvar usuário:", error);
-    return { success: false, message: "Erro ao vincular dados no sistema." };
-  }
-}
