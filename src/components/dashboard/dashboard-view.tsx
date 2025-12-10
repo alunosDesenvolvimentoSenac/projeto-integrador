@@ -253,10 +253,10 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 </div>
 
                 <Button 
-                    className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
+                    className="h-10 px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                     onClick={handleOpenGenericBooking}
                 >
-                    <Plus className="mr-2 h-5 w-5" /> Novo Agendamento
+                    <Plus className="mr-2 h-5 w-5" /> Novo
                 </Button>
              </div>
           </div>
