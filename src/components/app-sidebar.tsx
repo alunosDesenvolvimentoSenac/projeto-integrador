@@ -43,7 +43,7 @@ const data = {
       items: [
         {
           title: "Agendar Laboratório",
-          url: "#",
+          url: "dashboard",
         },
       ],
     },
@@ -69,8 +69,8 @@ const data = {
       icon: Users,
       items: [
         {
-          title: "Cadastrar Usuarios",
-          url: "#",
+          title: "Cadastro de usuários",
+          url: "cadastroDocentes",
         },
         {
           title: "Cadastrar Equipamentos",
