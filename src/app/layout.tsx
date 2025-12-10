@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Senac Minas",
+  title: "Senac Minas - Agendamento de Laboratórios",
   description: "Sistema de Agendamento de Laboratórios",
 };
 

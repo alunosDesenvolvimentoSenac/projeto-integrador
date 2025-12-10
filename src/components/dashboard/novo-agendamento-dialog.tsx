@@ -10,14 +10,17 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea" // Se estiver usando Textarea
+import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
-import { Loader2 } from "lucide-react"
+import { Loader2, Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { toast } from "sonner" // <--- IMPORTAR O TOAST
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface NovoAgendamentoProps {
   isOpen: boolean
@@ -45,9 +48,11 @@ export function NovoAgendamentoDialog({
   })
   
   const [periodo, setPeriodo] = useState<string>("")
+  const [disciplina, setDisciplina] = useState("")
   const [observacao, setObservacao] = useState("")
   const [loading, setLoading] = useState(false)
 
+  // Atualiza o estado quando o modal abre com dados pré-definidos
   useEffect(() => {
     if (isOpen) {
         if (initialDate) {
@@ -60,19 +65,17 @@ export function NovoAgendamentoDialog({
   }, [isOpen, initialDate, initialPeriod])
 
   async function handleSave() {
-    // Validação com Toast de Erro
-    if (!dateRange?.from || !periodo || !observacao) {
-      toast.warning("Atenção", {
-        description: "Preencha o período, a data e a observação."
+    // Validação
+    if (!dateRange?.from || !periodo || !disciplina) {
+      toast.warning("Campos obrigatórios", {
+        description: "Por favor, preencha o período, a data e a disciplina."
       })
       return
     }
 
     const user = auth.currentUser
     if (!user) {
-      toast.error("Erro de autenticação", {
-        description: "Você precisa estar logado para realizar esta ação."
-      })
+      toast.error("Erro de autenticação", { description: "Faça login novamente." })
       return
     }
 
@@ -83,29 +86,24 @@ export function NovoAgendamentoDialog({
         periodo: periodo as "Manhã" | "Tarde" | "Noite",
         idSala: idSalaSelecionada,
         uidUsuario: user.uid,
-        disciplina: ""
+        disciplina: disciplina,
+        observacao: observacao
       })
 
       if (result.success) {
-        // SUCESSO!
-        toast.success("Sucesso!", {
-            description: result.message,
-        })
-        
+        toast.success("Sucesso!", { description: result.message })
         if (onSuccess) onSuccess();
+        
         onClose()
+        // Limpar campos
+        setDisciplina("")
         setObservacao("") 
       } else {
-        // ERRO DO BACKEND (ex: Conflito)
-        toast.error("Não foi possível agendar", {
-            description: result.message
-        })
+        toast.error("Erro ao agendar", { description: result.message })
       }
     } catch (e) {
       console.error(e)
-      toast.error("Erro inesperado", {
-        description: "Ocorreu um erro de conexão. Tente novamente."
-      })
+      toast.error("Erro inesperado")
     } finally {
       setLoading(false)
     }
@@ -115,10 +113,15 @@ export function NovoAgendamentoDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Agendar: {nomeSala}</DialogTitle>
+          <DialogTitle>Solicitar Agendamento</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+             Laboratório: <span className="font-semibold text-foreground">{nomeSala}</span>
+          </p>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          
+          {/* Seletor de Período */}
           <div className="grid gap-2">
             <Label>Período</Label>
             <Select onValueChange={setPeriodo} value={periodo}>
@@ -133,36 +136,67 @@ export function NovoAgendamentoDialog({
             </Select>
           </div>
 
+          {/* Calendário (Range) */}
           <div className="grid gap-2">
             <Label>Selecione os dias</Label>
-            <div className="border rounded-md p-2 flex justify-center">
-                <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={1}
-                    locale={ptBR}
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) || date.getDay() === 0 || date.getDay() === 6}
-                />
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-                {dateRange?.from ? (
-                    dateRange.to && dateRange.to !== dateRange.from ? (
-                        <>De <b>{format(dateRange.from, "dd/MM")}</b> até <b>{format(dateRange.to, "dd/MM")}</b></>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="date"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "dd/MM/y", { locale: ptBR })} -{" "}
+                        {format(dateRange.to, "dd/MM/y", { locale: ptBR })}
+                      </>
                     ) : (
-                        <>Dia <b>{format(dateRange.from, "dd/MM")}</b> selecionado</>
+                      format(dateRange.from, "dd/MM/y", { locale: ptBR })
                     )
-                ) : "Nenhuma data selecionada"}
-            </p>
+                  ) : (
+                    <span>Selecione uma data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={1}
+                  locale={ptBR}
+                  disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) || date.getDay() === 0 || date.getDay() === 6}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
+          {/* Disciplina */}
           <div className="grid gap-2">
-            <Label>Observação / Disciplina</Label>
+            <Label>Disciplina / Curso <span className="text-red-500">*</span></Label>
+            <Input 
+                placeholder="Ex: Desenvolvimento de Sistemas - Módulo 2" 
+                value={disciplina} 
+                onChange={e => setDisciplina(e.target.value)} 
+            />
+          </div>
+
+          {/* Observação */}
+          <div className="grid gap-2">
+            <Label>Observações (Opcional)</Label>
             <Textarea 
-                placeholder="Ex: Aula de Robótica - Precisaremos do Projetor" 
+                placeholder="Ex: Precisaremos de projetor extra e cabos HDMI." 
                 value={observacao} 
                 onChange={e => setObservacao(e.target.value)} 
-                className="resize-none"
+                className="resize-none h-20"
             />
           </div>
 

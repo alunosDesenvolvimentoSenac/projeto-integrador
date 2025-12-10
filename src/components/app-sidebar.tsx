@@ -66,15 +66,15 @@ const DATA_MENU = {
       icon: Users,
       items: [
         {
-          title: "Cadastrar Docentes",
-          url: "/cadastroDocentes",
+          title: "Cadastrar Usuários",
+          url: "/cadastroUsuario",
         },
         {
-          title: "Cadastrar Administrativos",
+          title: "Cadastrar Equipamentos",
           url: "#",
         },
         {
-          title: "Cadastrar Turmas",
+          title: "Cadastrar Laboratórios",
           url: "#",
         },
       ],
@@ -97,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: "",
   })
 
-
+  // REMOVI O STATE DE LOADING QUE BLOQUEAVA A TELA
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

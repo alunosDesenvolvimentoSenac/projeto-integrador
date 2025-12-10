@@ -1,4 +1,4 @@
-import { pgTable, index, foreignKey, bigint, timestamp, varchar, integer, boolean, unique, text, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, bigint, timestamp, text, varchar, integer, boolean, unique, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const statusAgendamento = pgEnum("status_agendamento", ['pendente', 'confirmado', 'concluido'])
@@ -16,9 +16,11 @@ export const agendamentos = pgTable("agendamentos", {
 	idUsuario: bigint("id_usuario", { mode: "number" }).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	idTurma: bigint("id_turma", { mode: "number" }),
+	observacao: text(),
+	codigoSerie: varchar("codigo_serie", { length: 50 }),
+	disciplina: varchar({ length: 255 }),
 }, (table) => [
 	index("idx_agend_periodo").using("btree", table.dataHorarioInicio.asc().nullsLast().op("timestamptz_ops"), table.dataHorarioFim.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_agend_sala").using("btree", table.idSala.asc().nullsLast().op("int8_ops")),
 	foreignKey({
 			columns: [table.idSala],
 			foreignColumns: [salas.idSala],

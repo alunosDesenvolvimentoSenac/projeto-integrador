@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-// Componentes Personalizados
 import { AppSidebar } from "@/components/app-sidebar"
 import { EventPill } from "./event-pill" 
 import { DayDetailsDialog } from "./day-details-dialog"
@@ -44,13 +43,11 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, appointments: AgendamentoComDetalhes[] } | null>(null);
   const [isNovoAgendamentoOpen, setIsNovoAgendamentoOpen] = React.useState(false);
 
-  // Pré-preenchimento
   const [preSelectedDate, setPreSelectedDate] = React.useState<Date | undefined>(undefined)
   const [preSelectedPeriod, setPreSelectedPeriod] = React.useState<string | undefined>(undefined)
 
   // --- EFEITOS ---
 
-  // 1. Checa se é Admin
   React.useEffect(() => {
     const checkRole = async () => {
         const user = auth.currentUser;
@@ -67,7 +64,6 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
     return () => unsubscribe();
   }, []);
 
-  // 2. Busca Agendamentos
   const fetchApps = React.useCallback(async () => {
     if (!selectedLab) return;
     setLoadingApps(true);
@@ -114,7 +110,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
   const calendarDays = React.useMemo(() => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const firstDayOfMonth = new Date(year, month, 1).getDay(); 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days = [];
     
@@ -125,14 +121,15 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ day: i, currentMonth: true, month: month });
     }
-    const remainingSlots = 42 - days.length;
+    
+    // Completar o grid para sempre ter dias suficientes (visual mais bonito)
+    const remainingSlots = 35 - days.length;
     for (let i = 1; i <= remainingSlots; i++) {
       days.push({ day: i, currentMonth: false, month: month + 1 });
     }
     return days;
   }, [date]);
 
-  // Filtra agendamentos para exibição no dia
   const getDailyApps = (day: number) => {
     return appointments.filter(a => {
         if (!a.dataInicio) return false;
@@ -151,10 +148,12 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950">
+      {/* ALTERAÇÃO 1: Removi h-screen e overflow-hidden. 
+          Usei min-h-screen para garantir que cubra a tela, mas permita scroll se crescer.
+      */}
+      <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950 flex flex-col min-h-screen">
         
-        {/* HEADER */}
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -172,14 +171,15 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
           </div>
         </header>
 
-        {/* ÁREA PRINCIPAL */}
-        <div className="flex flex-1 flex-col p-4 md:p-6 overflow-hidden h-[calc(100vh-64px)]">
+        {/* ALTERAÇÃO 2: Removi 'overflow-hidden' e 'h-[calc...]'
+            Isso permite que o conteúdo empurre a página para baixo.
+        */}
+        <div className="flex flex-1 flex-col p-3 md:p-6">
           
-          {/* BARRA DE FERRAMENTAS */}
+          {/* BARRA DE CONTROLES */}
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
-             
-             {/* Esquerda: Mês e Navegação */}
-             <div className="flex items-center justify-between md:justify-start gap-4 w-full xl:w-auto">
+             {/* Esquerda */}
+             <div className="flex items-center gap-4 w-full xl:w-auto">
                 <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1 h-10">
                   <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8"><ChevronLeft className="h-5 w-5" /></Button>
                   <div className="w-[1px] h-5 bg-border mx-1" />
@@ -191,10 +191,9 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 {loadingApps && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground hidden md:block" />}
              </div>
 
-             {/* Direita: Controles (Empilhados no mobile, linha no desktop) */}
+             {/* Direita */}
              <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
-                
-                {/* 1. Laboratório */}
+                {/* ... (Selects e Botões mantidos iguais) ... */}
                 <div className="relative w-full sm:w-[280px]">
                     <Select value={selectedLab} onValueChange={setSelectedLab}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full font-medium">
@@ -208,7 +207,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                         <SelectContent>
                         {salasIniciais.map((lab) => (
                             <SelectItem key={lab.id} value={String(lab.id)}>
-                                <span className="font-mono font-bold text-muted-foreground mr-2">{lab.codigo}</span>
+                                <span className="font-mono font-bold text-muted-foreground mr-2 text-xs">{lab.codigo}</span>
                                 {lab.nome}
                             </SelectItem>
                         ))}
@@ -216,7 +215,6 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     </Select>
                 </div>
 
-                {/* 2. Filtro Período */}
                 <div className="w-full sm:w-[140px]">
                     <Select value={filterPeriodo} onValueChange={setFilterPeriodo}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
@@ -236,7 +234,6 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     </Select>
                 </div>
 
-                {/* 3. Filtro Status */}
                 <div className="w-full sm:w-[140px]">
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
@@ -255,28 +252,31 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                     </Select>
                 </div>
 
-                {/* 4. Botão Novo */}
                 <Button 
                     className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                     onClick={handleOpenGenericBooking}
                 >
-                    <Plus className="mr-1 h-5 w-5" /> Novo Agendamento
+                    <Plus className="mr-2 h-5 w-5" /> Novo Agendamento
                 </Button>
              </div>
           </div>
 
-          {/* LEGENDAS (Escondidas no mobile para economizar espaço) */}
-          <div className="hidden sm:flex flex-wrap items-center gap-4 mb-3 px-1">
-             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Manhã</div>
-             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm"></span> Tarde</div>
-             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm"></span> Noite</div>
-             <div className="h-4 w-[1px] bg-zinc-300 mx-2 hidden sm:block"></div>
-             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-amber-600 border-dashed"></span> Pendente</div>
-             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground ml-auto sm:ml-4"><span className="w-2.5 h-2.5 rounded border border-zinc-300 bg-red-50 dark:bg-red-900/20 shadow-sm"></span> Fim de Semana</div>
+          {/* LEGENDAS */}
+          <div className="flex flex-wrap items-center gap-6 mb-4 px-2 py-2 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-lg border border-zinc-100 dark:border-zinc-800 shrink-0">
+             {/* ... (Legendas mantidas iguais) ... */}
+             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-auto md:mr-0">Legenda</div>
+             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-500 ring-1 ring-offset-1 ring-offset-zinc-50 ring-transparent"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Manhã</span></div>
+             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-offset-1 ring-offset-zinc-50 ring-transparent"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Tarde</span></div>
+             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-indigo-500 ring-1 ring-offset-1 ring-offset-zinc-50 ring-transparent"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Noite</span></div>
+             <div className="h-3 w-[1px] bg-zinc-300 dark:bg-zinc-700 hidden sm:block"></div>
+             <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-red-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pendente</span></div>
+             <div className="flex items-center gap-2 ml-auto"><span className="h-3 w-3 rounded-[2px] bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50"></span><span className="text-xs font-medium text-muted-foreground">Fim de Semana</span></div>
           </div>
 
-          {/* GRID DO CALENDÁRIO */}
-          <div className="flex-1 bg-white dark:bg-zinc-900 border rounded-xl shadow-sm flex flex-col overflow-hidden">
+          {/* GRID DO CALENDÁRIO 
+              ALTERAÇÃO 3: Removi 'overflow-hidden' e defini uma altura mínima segura para as células.
+          */}
+          <div className="bg-white dark:bg-zinc-900 border rounded-xl shadow-sm flex flex-col">
              
              {/* Cabeçalho */}
              <div className="grid grid-cols-7 border-b bg-zinc-50/80 dark:bg-zinc-900/50">
@@ -289,13 +289,13 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
              </div>
 
              {/* Dias */}
-             <div className="grid grid-cols-7 flex-1 auto-rows-fr">
+             <div className="grid grid-cols-7 auto-rows-fr">
                 {calendarDays.map((slot, i) => {
-                  // Se não for mês atual, renderiza vazio (invisível)
-                  if (!slot.currentMonth) return <div key={i} className="border-b border-r bg-transparent" />;
+                  if (!slot.currentMonth) return <div key={i} className="border-b border-r bg-zinc-50/20 dark:bg-zinc-900/20" />;
 
                   const apps = getDailyApps(slot.day);
                   const isToday = slot.day === today.getDate() && slot.month === today.getMonth() && date.getFullYear() === today.getFullYear();
+                  
                   const slotDate = new Date(date.getFullYear(), slot.month, slot.day);
                   const dayOfWeek = slotDate.getDay(); 
                   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -305,15 +305,17 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                       key={i}
                       onClick={() => !isWeekend && handleDayClick(slot.day, slot.month, apps)}
                       className={cn(
-                        "relative border-b border-r p-1 md:p-2 transition-all flex flex-col gap-1 min-h-[80px] md:min-h-[120px] select-none",
+                        // ALTERAÇÃO 4: min-h fixo generoso (140px)
+                        // Isso garante que o quadrado nunca encolha, mesmo se a tela for pequena.
+                        "relative border-b border-r p-1 md:p-2 transition-all flex flex-col gap-1 min-h-[140px] select-none",
                         isWeekend 
                             ? "bg-red-50/40 dark:bg-red-950/10 cursor-not-allowed" 
-                            : "bg-background cursor-pointer active:bg-zinc-100 md:hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                            : "bg-background cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                       )}
                     >
-                      <div className="flex items-center justify-center md:justify-between">
+                      <div className="flex items-center justify-center md:justify-between mb-1">
                          <span className={cn(
-                           "text-xs md:text-sm font-medium h-6 w-6 md:h-7 md:w-7 flex items-center justify-center rounded-full transition-colors",
+                           "text-xs md:text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full transition-colors",
                            isToday ? "bg-primary text-primary-foreground shadow-md font-bold" : "text-zinc-600 dark:text-zinc-400",
                            isWeekend && "text-zinc-400 dark:text-zinc-600"
                          )}>
@@ -322,22 +324,19 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                       </div>
                       
                       {!isWeekend && (
-                          <div className="flex flex-col gap-1 mt-1 overflow-hidden h-full justify-end md:justify-start">
+                          <div className="flex flex-col gap-0.5 mt-0.5">
                             
-                            {/* Desktop: Pílulas com texto */}
-                            <div className="hidden md:flex flex-col gap-1">
-                                {apps.slice(0, 4).map((app) => <EventPill key={app.id} app={app} />)}
-                                {apps.length > 4 && (
-                                    <span className="text-[10px] text-muted-foreground pl-1">+ mais {apps.length - 4}</span>
-                                )}
+                            {/* Desktop */}
+                            <div className="hidden md:flex flex-col gap-0.5">
+                                {apps.map((app) => <EventPill key={app.id} app={app} />)}
                             </div>
 
-                            {/* Mobile: Bolinhas coloridas */}
+                            {/* Mobile */}
                             <div className="flex md:hidden flex-wrap gap-1 justify-center content-end pb-1">
                                 {apps.map((app) => {
                                     const dotColor = app.status === 'pendente' 
-                                        ? "bg-amber-400"
-                                        : app.periodo === 'Manhã' ? "bg-emerald-500"
+                                        ? "bg-red-500"
+                                        : app.periodo === 'Manhã' ? "bg-sky-500"
                                         : app.periodo === 'Tarde' ? "bg-orange-500"
                                         : "bg-indigo-500";
                                     return <div key={app.id} className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
