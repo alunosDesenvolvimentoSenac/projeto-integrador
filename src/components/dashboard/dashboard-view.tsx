@@ -226,7 +226,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="todos">Todos Períodos</SelectItem>
+                            <SelectItem value="todos">Períodos</SelectItem>
                             <SelectItem value="Manhã">Manhã</SelectItem>
                             <SelectItem value="Tarde">Tarde</SelectItem>
                             <SelectItem value="Noite">Noite</SelectItem>
@@ -245,7 +245,7 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="todos">Todos Status</SelectItem>
+                            <SelectItem value="todos">Status</SelectItem>
                             <SelectItem value="pendente">Pendentes</SelectItem>
                             <SelectItem value="confirmado">Confirmados</SelectItem>
                         </SelectContent>
@@ -253,10 +253,10 @@ export function DashboardView({ salasIniciais }: DashboardViewProps) {
                 </div>
 
                 <Button 
-                    className="h-10 px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
+                    className=" px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                     onClick={handleOpenGenericBooking}
                 >
-                    <Plus className="mr-2 h-5 w-5" /> Novo
+                    <Plus className="mr-2 h-5 w-5" /> Novo Agendamento
                 </Button>
              </div>
           </div>
