@@ -13,15 +13,12 @@ import {
   FlaskConical,
   ListChecks,
   SunMedium,
-  Pencil, 
   Loader2,
   X, 
   Check, 
   Lock,
   Unlock,
   CalendarDays, 
-  Copy,
-  Trash2,
   Info,
   Layers
 } from "lucide-react"
@@ -35,8 +32,8 @@ import {
   saveAgendamentoAction, 
   deleteAgendamentoAction, 
   deleteSerieAction, 
-  approveAgendamentoAction,
-  approveSerieAction,
+  approveAgendamentoAction, 
+  approveSerieAction, 
   getSalasAction
 } from "@/app/actions/agendamentos"
 
@@ -161,8 +158,14 @@ export default function Dashboard() {
           if (infoBanco) {
             const roleMapeada = infoBanco.cargo === "Administrador" ? "ADMIN" : "USER"
 
+            // Tenta forçar a conversão para Number para garantir
+            const idUsuarioCorreto = Number((infoBanco as any).idUsuario);
+
+            // Log para debug (abra o console F12 para ver se aparece o ID certo agora)
+            console.log("ID recuperado do banco:", idUsuarioCorreto);
+
             setCurrentUser({
-              id: (infoBanco as any).idUsuario || 1, 
+              id: idUsuarioCorreto || 0, // Se ainda falhar, fica 0, mas o log vai nos dizer
               nome: infoBanco.nomeUsuario,
               email: user.email || "",
               role: roleMapeada
@@ -273,8 +276,11 @@ export default function Dashboard() {
     observacao?: string
   }) => {
     
-    if (!currentUser) {
-        toast.error("Usuário não identificado.");
+    if (!currentUser || !currentUser.id || currentUser.id === 0) {
+        toast.error("Erro de autenticação", {
+            description: "Deslogue e faça login novamente para carregar o perfil..."
+        });
+        // Tenta recarregar a página se o ID não for encontrado
         return;
     }
 
@@ -308,7 +314,6 @@ export default function Dashboard() {
                   if (p === 'Noite' && currentHour >= 22) skip = true;
               }
 
-              // SE EXISTIR QUALQUER AGENDAMENTO (Pendente OU Confirmado), É CONFLITO
               const conflito = agendamentos.find(
                 (a) => 
                     a.dia === currentDia && 
@@ -327,6 +332,9 @@ export default function Dashboard() {
                     status: initialStatus,
                     labId: data.labId,
                     observacao: data.observacao,
+                    // OBS: O nome 'docente' aqui serve apenas para referência local
+                    // O banco usará o ID para linkar
+                    docente: currentUser.nome, 
                     disciplina: data.disciplina 
                   });
               }
@@ -351,6 +359,7 @@ export default function Dashboard() {
     }));
 
     try {
+        // Envia o ID CORRETO (currentUser.id) para o banco
         const result = await saveAgendamentoAction(finalPayload, currentUser.id);
 
         if (result.success) {
@@ -680,7 +689,7 @@ export default function Dashboard() {
                         }
 
                         if (isPastDay && !isAdmin) {
-                             toast.error("Data Retroativa", {
+                              toast.error("Data Retroativa", {
                                 description: "Não é possível realizar agendamentos em dias passados.",
                                 icon: <Lock className="h-4 w-4 text-red-500" />
                             })
@@ -1106,10 +1115,10 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
 }
 
 function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios, currentUser, isRangeMode }: any) {
-    const [docente, setDocente] = React.useState("")
+    // REMOVIDO o useState 'docente' para garantir que nunca fique com dado antigo
     const [disciplina, setDisciplina] = React.useState("")
     const [labId, setLabId] = React.useState("")
-    const [observacao, setObservacao] = React.useState("") 
+    const [observacao, setObservacao] = React.useState("")
     
     const [startDate, setStartDate] = React.useState<Date | undefined>(undefined)
     const [endDate, setEndDate] = React.useState<Date | undefined>(undefined)
@@ -1121,11 +1130,6 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
   
     React.useEffect(() => {
         if(isOpen && formData) {
-            if (currentUser) {
-                setDocente(currentUser.nome)
-            } else {
-                setDocente("") 
-            }
             setDisciplina("")
             setLabId(formData.labIdPre || "")
             setObservacao("") 
@@ -1148,7 +1152,7 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                 setEndDate(initialDate);
             }
         }
-    }, [isOpen, formData, currentUser, isRangeMode])
+    }, [isOpen, formData, isRangeMode])
 
     const handleStartDateSelect = (date: Date | undefined) => {
         if (!date) return;
@@ -1162,7 +1166,7 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        if(!docente || !labId || selectedPeriodos.length === 0 || !startDate || !endDate) {
+        if(!labId || selectedPeriodos.length === 0 || !startDate || !endDate) {
             toast.error("Preencha todos os campos obrigatórios.")
             return
         }
@@ -1173,7 +1177,10 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
         const endDateFormatted = `${yEnd}-${mEnd}-${dEnd}`;
         
         onSave({ 
-            docente, 
+            // FORÇA o envio do nome atual do usuário. 
+            // Se 'currentUser' estiver correto no Dialog (como você disse que aparece visualmente), 
+            // isso garantirá que o payload enviado também esteja correto.
+            docente: currentUser?.nome || "", 
             disciplina, 
             labId: Number(labId), 
             startDetails: { d: startDate.getDate(), m: startDate.getMonth(), y: startDate.getFullYear() }, 
@@ -1203,8 +1210,10 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
 
     const togglePeriodo = (p: Periodo) => {
         if (!isRangeMode && !isTurnoDisponivel(p)) return; 
+        
+        // CORREÇÃO: UM POR VEZ
         setSelectedPeriodos(prev => 
-            prev.includes(p) ? prev.filter(item => item !== p) : [...prev, p]
+            prev.includes(p) ? [] : [p]
         )
     }
   
@@ -1317,9 +1326,10 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
              <div className="grid gap-2">
                 <Label htmlFor="docente">Nome do Docente</Label>
                 <div className="relative">
+                    {/* Leitura direta da prop, garantindo que o que você vê é o que será enviado */}
                     <Input 
                         id="docente" 
-                        value={docente} 
+                        value={currentUser?.nome || ""} 
                         readOnly={true} 
                         className="bg-muted text-muted-foreground cursor-not-allowed border-dashed focus-visible:ring-0"
                         tabIndex={-1}

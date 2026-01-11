@@ -11,22 +11,39 @@ export async function sincronizarUsuario(uid: string, email: string, nome: strin
   });
 
   if (usuarioExiste) {
-    return { status: 'ok', usuario: usuarioExiste };
+    // Convertendo BigInt para number antes de retornar
+    return {
+      status: 'ok',
+      usuario: {
+        ...usuarioExiste,
+        idUsuario: Number(usuarioExiste.idUsuario),
+        idUnidade: Number(usuarioExiste.idUnidade),
+        idPerfil: Number(usuarioExiste.idPerfil)
+      }
+    };
   }
 
-  // 2. Se não existe, cria um novo (Perfil padrão: Aluno/Consulta - ajuste o ID conforme seu seed)
-  // Supondo que ID 4 seja "Consulta" ou "Aluno"
+  // 2. Se não existe, cria um novo
   try {
     const novoUsuario = await db.insert(usuarios).values({
-        uidFirebase: uid,
-        email: email,
-        nome: nome,
-        idUnidade: 1, // Defina um padrão ou lógica para isso
-        idPerfil: 4,  // ID do perfil padrão
-        // matricula: "PENDENTE" 
+      uidFirebase: uid,
+      email: email,
+      nome: nome,
+      idUnidade: 1, // Ajuste conforme sua regra de negócio
+      idPerfil: 4,  // ID do perfil padrão (ex: Aluno)
     }).returning();
-    
-    return { status: 'criado', usuario: novoUsuario[0] };
+
+    const usuarioCriado = novoUsuario[0];
+
+    return {
+      status: 'criado',
+      usuario: {
+        ...usuarioCriado,
+        idUsuario: Number(usuarioCriado.idUsuario),
+        idUnidade: Number(usuarioCriado.idUnidade),
+        idPerfil: Number(usuarioCriado.idPerfil)
+      }
+    };
   } catch (error) {
     console.error("Erro ao sincronizar usuário:", error);
     return { status: 'erro' };
@@ -35,34 +52,36 @@ export async function sincronizarUsuario(uid: string, email: string, nome: strin
 
 export async function verificarPermissaoUsuario(uidFirebase: string) {
   try {
-    // ABORDAGEM CORRIGIDA: Usando db.select com innerJoin
-    // Isso imita o SQL: SELECT * FROM usuarios INNER JOIN perfis ON ...
     const resultado = await db
       .select({
         usuario: usuarios,
-        perfil: perfis, // Traz os dados do perfil separados
+        perfil: perfis,
       })
       .from(usuarios)
-      .innerJoin(perfis, eq(usuarios.idPerfil, perfis.idPerfil)) // O JOIN explícito
+      .innerJoin(perfis, eq(usuarios.idPerfil, perfis.idPerfil))
       .where(eq(usuarios.uidFirebase, uidFirebase));
-    
-    // O .select retorna sempre um array. Pegamos o primeiro item.
+
     const usuarioEncontrado = resultado[0];
 
     if (!usuarioEncontrado) {
       return { sucesso: false, mensagem: "Usuário não cadastrado no sistema escolar." };
     }
 
-    // Agora seus dados estão organizados assim:
-    // usuarioEncontrado.usuario (dados do user)
-    // usuarioEncontrado.perfil (dados do perfil, ex: is_admin)
-
-    return { 
-      sucesso: true, 
-      usuario: {
-        ...usuarioEncontrado.usuario,
-        perfil: usuarioEncontrado.perfil // Acoplamos o perfil dentro do objeto usuario para facilitar
+    // Serialização segura de BigInt
+    const usuarioSerializado = {
+      ...usuarioEncontrado.usuario,
+      idUsuario: Number(usuarioEncontrado.usuario.idUsuario),
+      idUnidade: Number(usuarioEncontrado.usuario.idUnidade),
+      idPerfil: Number(usuarioEncontrado.usuario.idPerfil),
+      perfil: {
+        ...usuarioEncontrado.perfil,
+        idPerfil: Number(usuarioEncontrado.perfil.idPerfil)
       }
+    };
+
+    return {
+      sucesso: true,
+      usuario: usuarioSerializado
     };
 
   } catch (error) {
@@ -75,9 +94,10 @@ export async function getDadosUsuarioSidebar(uidFirebase: string) {
   try {
     const resultado = await db
       .select({
+        idUsuario: usuarios.idUsuario,
         nomeUsuario: usuarios.nome,
         nomeUnidade: unidades.descricaoUnidade,
-        cargo: perfis.descricaoPerfil // Aqui virá "Administrador", "Docente", etc.
+        cargo: perfis.descricaoPerfil
       })
       .from(usuarios)
       .innerJoin(unidades, eq(usuarios.idUnidade, unidades.idUnidade))
@@ -85,8 +105,10 @@ export async function getDadosUsuarioSidebar(uidFirebase: string) {
       .where(eq(usuarios.uidFirebase, uidFirebase));
 
     if (!resultado[0]) return null;
-
-    return resultado[0];
+    return {
+      ...resultado[0],
+      idUsuario: Number(resultado[0].idUsuario)
+    };
   } catch (error) {
     console.error("Erro ao buscar dados da sidebar:", error);
     return null;

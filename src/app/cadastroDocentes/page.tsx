@@ -1,4 +1,4 @@
-import { FormularioDocente } from "@/components/formularioDocente"; // Verifique se o nome do arquivo está correto (formulario-docente ou formularioDocente)
+import { FormularioDocente } from "@/components/formularioDocente";
 import { listarUnidades } from "@/app/actions/admin";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -18,11 +18,9 @@ import {
 
 export default async function Page() {
   
-  // Busca dados no servidor (Neon) antes de renderizar
   const listaUnidades = await listarUnidades();
 
   return (
-    
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -49,15 +47,20 @@ export default async function Page() {
             </div>
           </header>
           
-          <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-            <div className="w-full max-w-sm">
-                {/* CORREÇÃO AQUI: O nome da prop deve ser 'unidades' */}
+          <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/50 p-6 md:p-10">
+            {/* Aumentado para max-w-2xl para ficar bem largo */}
+            <div className="flex w-full max-w-2xl flex-col gap-6">
+              
+              {/* Removido o título interno. Aumentado padding para p-10 */}
+              <div className="flex flex-col gap-6 rounded-xl border bg-background p-10 shadow-sm">
+                
                 <FormularioDocente unidades={listaUnidades} />
+              
+              </div>
             </div>
           </div>
           
         </SidebarInset>
       </SidebarProvider>
-    
   );
 }

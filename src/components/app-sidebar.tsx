@@ -6,6 +6,7 @@ import {
   FileChartColumn,
   GraduationCap,
   Users,
+  Inbox // <--- 1. Importe o ícone aqui
 } from "lucide-react"
 
 import { auth } from "@/lib/firebase"
@@ -23,7 +24,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// DADOS ESTÁTICOS
+// 2. ADICIONE O ITEM NO MENU
 const DATA_MENU = {
   teams: [
     {
@@ -37,7 +38,6 @@ const DATA_MENU = {
       title: "Agendamento",
       url: "#",
       icon: CalendarCheck,
-      isActive: true,
       items: [
         {
           title: "Agendar Laboratório",
@@ -45,7 +45,18 @@ const DATA_MENU = {
         },
         {
            title: "Minha Agenda",
-           url: "/agendamentos/meus",
+           url: "/agendamentosMeus",
+        },
+      ],
+    },
+    {
+      title: "Solicitações",
+      url: "#",
+      icon: Inbox,
+      items: [
+        {
+          title: "Pendências",
+          url: "/solicitacoesAgendamentos",
         },
       ],
     },
@@ -82,45 +93,41 @@ const DATA_MENU = {
   ],
 }
 
+const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações"];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
-  // ESTRATÉGIA: Começa com o menu "Padrão" (Filtrado para Docente)
-  // Assim o usuário vê algo imediatamente, sem esperar loading.
-  const menuPadrao = DATA_MENU.navMain.filter(item => item.title !== "Cadastros")
+  // 3. ATUALIZE O FILTRO INICIAL
+  // Removemos tudo que estiver na lista ADMIN_ONLY_MENUS
+  const menuPadrao = DATA_MENU.navMain.filter(item => !ADMIN_ONLY_MENUS.includes(item.title))
   
   const [menuItems, setMenuItems] = React.useState(menuPadrao)
   
-  // Estado inicial mais limpo para não parecer "quebrado" enquanto carrega
   const [userData, setUserData] = React.useState({
     name: "Usuário", 
     email: "",
     avatar: "",
   })
 
-  // REMOVI O STATE DE LOADING QUE BLOQUEAVA A TELA
-
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Atualiza email visualmente rápido
         setUserData(prev => ({ ...prev, email: user.email || "" }))
 
-        // Busca dados no Banco (Neon) em segundo plano
         const infoBanco = await getDadosUsuarioSidebar(user.uid)
         
         if (infoBanco) {
-          // Atualiza o nome quando chegar
           setUserData({
             name: infoBanco.nomeUsuario,
             email: user.email || "",
             avatar: "",
           })
 
-          // SE for Admin, nós "adicionamos" o menu que faltava
+          // SE for Admin, mostramos o MENU COMPLETO (incluindo Solicitações e Cadastros)
           if (infoBanco.cargo === "Administrador") {
-            setMenuItems(DATA_MENU.navMain) // Mostra tudo
+            setMenuItems(DATA_MENU.navMain) 
           }
-          // Se for Docente, não precisa fazer nada, pois já iniciou filtrado.
+          // Se não for admin, ele mantém o 'menuPadrao' que já filtramos lá em cima
         }
       }
     })
@@ -135,7 +142,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       
       <SidebarContent>
-        {/* REMOVI O LOADER. Agora exibe o menu direto. */}
         <NavMain items={menuItems} />
       </SidebarContent>
 
