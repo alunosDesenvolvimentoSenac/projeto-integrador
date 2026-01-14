@@ -77,8 +77,8 @@ const DATA_MENU = {
       icon: Users,
       items: [
         {
-          title: "Cadastrar Docentes",
-          url: "/cadastroDocentes",
+          title: "Cadastrar Usuarios",
+          url: "/cadastroUsuarios",
         },
         {
           title: "Cadastrar Administrativos",
