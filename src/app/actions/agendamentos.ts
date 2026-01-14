@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { agendamentos, usuarios, salas } from "@/db/migrations/schema"; 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const HORARIOS = {
@@ -152,8 +152,10 @@ export async function getSalasAction() {
       .select({
         id: salas.idSala,
         nome: salas.descricaoSala,
+        codigo: salas.codigoSala
       })
-      .from(salas);
+      .from(salas)
+      .orderBy(asc(salas.descricaoSala));
       
     return data;
   } catch (error) {
