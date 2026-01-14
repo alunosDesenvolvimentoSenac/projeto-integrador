@@ -32,6 +32,8 @@ import {
   saveAgendamentoAction, 
   deleteAgendamentoAction, 
   deleteSerieAction, 
+  // LEMBRE-SE: Você precisa criar esta função no seu backend
+  deleteSerieByStatusAction, 
   approveAgendamentoAction, 
   approveSerieAction, 
   getSalasAction
@@ -157,15 +159,10 @@ export default function Dashboard() {
           
           if (infoBanco) {
             const roleMapeada = infoBanco.cargo === "Administrador" ? "ADMIN" : "USER"
-
-            // Tenta forçar a conversão para Number para garantir
             const idUsuarioCorreto = Number((infoBanco as any).idUsuario);
 
-            // Log para debug (abra o console F12 para ver se aparece o ID certo agora)
-            console.log("ID recuperado do banco:", idUsuarioCorreto);
-
             setCurrentUser({
-              id: idUsuarioCorreto || 0, // Se ainda falhar, fica 0, mas o log vai nos dizer
+              id: idUsuarioCorreto || 0,
               nome: infoBanco.nomeUsuario,
               email: user.email || "",
               role: roleMapeada
@@ -280,7 +277,6 @@ export default function Dashboard() {
         toast.error("Erro de autenticação", {
             description: "Deslogue e faça login novamente para carregar o perfil..."
         });
-        // Tenta recarregar a página se o ID não for encontrado
         return;
     }
 
@@ -332,8 +328,6 @@ export default function Dashboard() {
                     status: initialStatus,
                     labId: data.labId,
                     observacao: data.observacao,
-                    // OBS: O nome 'docente' aqui serve apenas para referência local
-                    // O banco usará o ID para linkar
                     docente: currentUser.nome, 
                     disciplina: data.disciplina 
                   });
@@ -359,7 +353,6 @@ export default function Dashboard() {
     }));
 
     try {
-        // Envia o ID CORRETO (currentUser.id) para o banco
         const result = await saveAgendamentoAction(finalPayload, currentUser.id);
 
         if (result.success) {
@@ -378,32 +371,54 @@ export default function Dashboard() {
   }
 
   // --- LÓGICA DE EXCLUSÃO NO BANCO ---
+  // Modificada para remover por Série E Status
   const handleDeleteAppointment = async (id: number, deleteAllInGroup: boolean = false) => {
     try {
-        if (deleteAllInGroup) {
-            const targetApp = agendamentos.find(a => a.id === id);
-            
-            if (targetApp && targetApp.groupId) {
-                 await deleteSerieAction(targetApp.groupId);
-                 toast.success("Série completa removida.");
-            } else {
-                await deleteAgendamentoAction(id);
-                toast.success("Agendamento removido.");
-            }
+        const targetApp = agendamentos.find(a => a.id === id);
+        
+        if (!targetApp) return;
+
+        if (deleteAllInGroup && targetApp.groupId) {
+             // 1. Tenta deletar usando a Server Action nova (que você precisa criar)
+             // Ela deleta: WHERE groupId = X AND status = Y
+             try {
+                // Se você ainda não criou a 'deleteSerieByStatusAction', isso vai dar erro.
+                // Certifique-se de exportá-la em '@/app/actions/agendamentos'
+                const result = await deleteSerieByStatusAction(targetApp.groupId, targetApp.status);
+                
+                if (result && result.success) {
+                    toast.success(`Série com status "${targetApp.status}" removida.`);
+                
+                    // 2. Atualiza estado local removendo APENAS o que bate com groupId e status
+                    setAgendamentos(prev => prev.filter(a => {
+                        // Mantém se for de outro grupo OU se for do mesmo grupo mas status diferente
+                        return a.groupId !== targetApp.groupId || a.status !== targetApp.status;
+                    }));
+
+                    if (selectedDayDetails) {
+                        const updatedList = selectedDayDetails.appointments.filter(a => {
+                            return a.groupId !== targetApp.groupId || a.status !== targetApp.status;
+                        }) as Agendamento[];
+                        setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList });
+                    }
+                } else {
+                    toast.error("Erro ao remover a série pelo servidor.");
+                }
+             } catch (err) {
+                 console.error("Erro ao chamar deleteSerieByStatusAction", err);
+                 // Fallback: Tenta deletar a série toda se a função específica falhar/não existir
+                 // (Opcional, mas ajuda se vc esquecer de criar a action)
+                 toast.error("Função de deletar por status não encontrada ou falhou.");
+             }
+
         } else {
+            // Deletar Individualmente
             await deleteAgendamentoAction(id);
             toast.success("Agendamento removido.");
-        }
 
-        setAgendamentos(prev => prev.filter(a => a.id !== id)) 
-        
-        const [dadosAtualizados] = await Promise.all([getAgendamentosAction()]);
-        setAgendamentos(dadosAtualizados as unknown as Agendamento[]);
-        
-        if (selectedDayDetails) {
-            if (deleteAllInGroup) {
-                setSelectedDayDetails(null);
-            } else {
+            setAgendamentos(prev => prev.filter(a => a.id !== id)) 
+            
+            if (selectedDayDetails) {
                 const updatedList = selectedDayDetails.appointments.filter(a => a.id !== id) as Agendamento[];
                 setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList });
             }
@@ -446,14 +461,14 @@ export default function Dashboard() {
                   ))
       
                   if (selectedDayDetails) {
-                     const updatedList = selectedDayDetails.appointments.map(a => 
-                         a.id === id ? { ...a, status: "confirmado" } : a
-                     ) as Agendamento[]; 
-                     setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList })
+                      const updatedList = selectedDayDetails.appointments.map(a => 
+                          a.id === id ? { ...a, status: "confirmado" } : a
+                      ) as Agendamento[]; 
+                      setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList })
                   }
                   toast.success("Agendamento aprovado!");
              } else {
-                 toast.error("Erro ao aprovar.");
+                  toast.error("Erro ao aprovar.");
              }
         }
     } catch (error) {
@@ -692,7 +707,7 @@ export default function Dashboard() {
                               toast.error("Data Retroativa", {
                                 description: "Não é possível realizar agendamentos em dias passados.",
                                 icon: <Lock className="h-4 w-4 text-red-500" />
-                            })
+                              })
                             return;
                         }
 
@@ -811,10 +826,11 @@ function EventPill({ app }: { app: Agendamento }) {
 }
   
 function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDelete, onApprove, currentUser }: any) {
+    // ESTADO MODIFICADO: Agora inclui 'status' no item
     const [confirmationState, setConfirmationState] = React.useState<{
         isOpen: boolean;
         type: 'delete' | 'approve';
-        item: { id: number, groupId?: string };
+        item: { id: number, groupId?: string, status: string }; // status adicionado
         step: 'select-scope' | 'confirm';
         scope: 'single' | 'series' | null;
     } | null>(null);
@@ -864,7 +880,8 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
         setConfirmationState({
             isOpen: true,
             type: type,
-            item: { id: app.id, groupId: app.groupId },
+            // Passamos o status aqui
+            item: { id: app.id, groupId: app.groupId, status: app.status },
             step: hasSeries ? 'select-scope' : 'confirm',
             scope: hasSeries ? null : 'single'
         });
@@ -1060,7 +1077,7 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                 {isDelete ? "Remover" : "Aprovar"} Agendamento em Série
                             </AlertDialogTitle>
                             <AlertDialogDescription className="text-center">
-                                Este agendamento se repete em outros dias. O que você deseja {isDelete ? "remover" : "aprovar"}?
+                                Este agendamento faz parte de uma série. O que você deseja {isDelete ? "remover" : "aprovar"}?
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         
@@ -1072,7 +1089,7 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                             >
                                 <span className="font-semibold text-foreground text-base">Apenas este dia</span>
                                 <span className="text-xs text-muted-foreground font-normal">
-                                    {isDelete ? "Mantém os outros dias." : "Aprova somente hoje."}
+                                    {isDelete ? "Mantém o restante da série." : "Aprova somente hoje."}
                                 </span>
                             </Button>
                             
@@ -1081,9 +1098,13 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                 className={cn("h-auto py-4 px-3 flex flex-col gap-1 items-center justify-center text-center", actionHoverClass)}
                                 onClick={() => setConfirmationState(prev => prev ? ({ ...prev, scope: 'series', step: 'confirm' }) : null)}
                             >
-                                <span className={cn("font-semibold text-base", actionTextClass)}>Toda a série</span>
+                                <span className={cn("font-semibold text-base", actionTextClass)}>
+                                    Toda a série ({confirmationState.item.status})
+                                </span>
                                 <span className="text-xs text-muted-foreground font-normal">
-                                    {isDelete ? "Exclui todos os vinculados." : "Aprova todos de uma vez."}
+                                    {isDelete 
+                                        ? `Exclui com status "${confirmationState.item.status}".` 
+                                        : "Aprova todos de uma vez."}
                                 </span>
                             </Button>
                         </div>
@@ -1095,7 +1116,18 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                         <AlertDialogHeader>
                             <AlertDialogTitle className="text-center">Confirmação Final</AlertDialogTitle>
                             <AlertDialogDescription className="text-center">
-                                Tem certeza que deseja {isDelete ? "remover" : "aprovar"} <strong>{confirmationState.scope === 'series' ? 'todos os agendamentos da série' : 'este agendamento'}</strong>?
+                                Tem certeza que deseja {isDelete ? "remover" : "aprovar"} 
+                                {confirmationState.scope === 'series' ? (
+                                    <span>
+                                        {" "}todos os agendamentos da série com status <strong>{confirmationState.item.status}</strong>?
+                                        <br/>
+                                        <span className="text-xs text-muted-foreground mt-1 block">
+                                            (Itens com outros status na mesma série não serão afetados.)
+                                        </span>
+                                    </span>
+                                ) : (
+                                    <strong></strong>
+                                )}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="mt-6 sm:justify-center">
@@ -1115,7 +1147,6 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
 }
 
 function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios, currentUser, isRangeMode }: any) {
-    // REMOVIDO o useState 'docente' para garantir que nunca fique com dado antigo
     const [disciplina, setDisciplina] = React.useState("")
     const [labId, setLabId] = React.useState("")
     const [observacao, setObservacao] = React.useState("")
@@ -1177,9 +1208,6 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
         const endDateFormatted = `${yEnd}-${mEnd}-${dEnd}`;
         
         onSave({ 
-            // FORÇA o envio do nome atual do usuário. 
-            // Se 'currentUser' estiver correto no Dialog (como você disse que aparece visualmente), 
-            // isso garantirá que o payload enviado também esteja correto.
             docente: currentUser?.nome || "", 
             disciplina, 
             labId: Number(labId), 
@@ -1211,7 +1239,6 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
     const togglePeriodo = (p: Periodo) => {
         if (!isRangeMode && !isTurnoDisponivel(p)) return; 
         
-        // CORREÇÃO: UM POR VEZ
         setSelectedPeriodos(prev => 
             prev.includes(p) ? [] : [p]
         )
@@ -1326,7 +1353,6 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
              <div className="grid gap-2">
                 <Label htmlFor="docente">Nome do Docente</Label>
                 <div className="relative">
-                    {/* Leitura direta da prop, garantindo que o que você vê é o que será enviado */}
                     <Input 
                         id="docente" 
                         value={currentUser?.nome || ""} 

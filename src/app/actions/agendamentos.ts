@@ -2,7 +2,8 @@
 
 import { db } from "@/db";
 import { agendamentos, usuarios, salas } from "@/db/migrations/schema"; 
-import { eq } from "drizzle-orm";
+// ADICIONADO 'and' NA IMPORTAÇÃO ABAIXO
+import { eq, and } from "drizzle-orm"; 
 import { revalidatePath } from "next/cache";
 
 const HORARIOS = {
@@ -22,10 +23,9 @@ export async function getAgendamentosAction() {
         status: agendamentos.status,
         idSala: agendamentos.idSala,
         nomeUsuario: usuarios.nome,
-        // Novos campos
         observacao: agendamentos.observacao,
         codigoSerie: agendamentos.codigoSerie,
-        disciplina: agendamentos.disciplina // <--- 1. ADICIONADO AQUI PARA BUSCAR DO BANCO
+        disciplina: agendamentos.disciplina 
       })
       .from(agendamentos)
       .leftJoin(usuarios, eq(agendamentos.idUsuario, usuarios.idUsuario));
@@ -71,7 +71,6 @@ export async function saveAgendamentoAction(items: any[], userId: number) {
       return {
         dataHorarioInicio: inicio.toISOString(),
         dataHorarioFim: fim.toISOString(),
-        // Aceita o status vindo do front (confirmado/pendente)
         status: (item.status as 'pendente' | 'confirmado') || 'pendente',
         
         idSala: Number(item.labId), 
@@ -79,8 +78,8 @@ export async function saveAgendamentoAction(items: any[], userId: number) {
         
         idTurma: null, 
         observacao: item.observacao ?? null,
-        codigoSerie: item.groupId ?? null,
-        disciplina: item.disciplina ?? null // <--- 2. ADICIONADO AQUI PARA GRAVAR NO BANCO
+        codigoSerie: item.codigoSerie ?? item.groupId ?? null, // Aceita tanto codigoSerie quanto groupId do front
+        disciplina: item.disciplina ?? null 
       };
     });
 
@@ -104,14 +103,34 @@ export async function deleteAgendamentoAction(id: number) {
   }
 }
 
-// --- DELETAR SÉRIE INTEIRA ---
+// --- DELETAR SÉRIE INTEIRA (TODOS OS STATUS) ---
 export async function deleteSerieAction(codigoSerie: string) {
   try {
-    // Deleta TODOS que tiverem esse código de série
     await db.delete(agendamentos).where(eq(agendamentos.codigoSerie, codigoSerie));
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+// --- NOVA FUNÇÃO: DELETAR SÉRIE POR STATUS ---
+// Deleta apenas itens daquela série que coincidem com o status passado (ex: apenas os 'pendente')
+export async function deleteSerieByStatusAction(codigoSerie: string, status: string) {
+  try {
+    await db
+      .delete(agendamentos)
+      .where(
+        and(
+          eq(agendamentos.codigoSerie, codigoSerie),
+          eq(agendamentos.status, status as 'pendente' | 'confirmado')
+        )
+      );
+      
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao deletar série por status:", error);
     return { success: false, error: String(error) };
   }
 }
