@@ -1,7 +1,5 @@
 "use client"
 
-import senaclogomenu from "@/app/assets/senaclogomenu.svg"
-import Image from "next/image"
 import * as React from "react"
 import {
   CalendarCheck,
@@ -30,23 +28,11 @@ import {
 } from "@/components/ui/sidebar"
 
 
-// Componente Wrapper para o Logo
-const SenacLogo = () => (
-  <div >
-     <Image
-       src={senaclogomenu} // Sua imagem importada
-       alt="Senac Minas"
-       width={100}
-       height={100}
-       className="object-contain p-0.5" // object-contain garante que não distorça
-     />
-  </div>
-)
+
 // 2. ADICIONE O ITEM NO MENU
 const DATA_MENU = {
   teams: [
     {
-      logo: SenacLogo
     },
   ],
   navMain: [

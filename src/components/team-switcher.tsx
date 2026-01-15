@@ -29,8 +29,8 @@ export function TeamSwitcher() {
              <Image
                           src={senacLogo}
                           alt="Senac Minas Logo"
-                          width={90}
-                          height={90}
+                          width={100}
+                          height={100}
                         >
               </Image>
           </div>

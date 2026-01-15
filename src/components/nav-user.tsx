@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown, LogOut, BadgeCheck } from "lucide-react"
+import {  Ellipsis, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { signOut, onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase" 
@@ -83,7 +83,7 @@ export function NavUser({
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                 <span className="truncate text-xs text-muted-foreground">{cargo}</span> {/* Exibe o cargo aqui */}
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <Ellipsis className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
