@@ -6,7 +6,11 @@ import {
   FileChartColumn,
   GraduationCap,
   Users,
-  Inbox // <--- 1. Importe o ícone aqui
+  Inbox,
+  Monitor,
+  Building,
+  LayoutGrid,
+  UserStar
 } from "lucide-react"
 
 import { auth } from "@/lib/firebase"
@@ -72,7 +76,7 @@ const DATA_MENU = {
       ],
     },
     {
-      title: "Cadastros",
+      title: "Usuários",
       url: "#",
       icon: Users,
       items: [
@@ -80,20 +84,56 @@ const DATA_MENU = {
           title: "Cadastrar Usuarios",
           url: "/cadastroUsuarios",
         },
-        {
-          title: "Cadastrar Administrativos",
-          url: "#",
-        },
-        {
-          title: "Cadastrar Turmas",
-          url: "#",
-        },
       ],
     },
+    {
+      title: "Salas",
+      url: "#",
+      icon: LayoutGrid,
+      items: [
+        {
+          title: "Cadastrar Salas",
+          url: "/cadastroSalas",
+        },        
+      ],
+    },
+    {
+      title: "Unidades",
+      url: "#",
+      icon: Building,
+      items: [
+        {
+          title: "Cadastrar Unidades",
+          url: "/cadastroUnidade",
+        },        
+      ],
+    }, 
+    {
+      title: "Perfis",
+      url: "#",
+      icon: UserStar,
+      items: [
+        {
+          title: "Cadastrar Perfis",
+          url: "/cadastroPerfis",
+        },        
+      ],
+    },           
+    {
+      title: "Equipamentos",
+      url: "#",
+      icon: Monitor,
+      items: [
+        {
+          title: "Cadastrar Equipamentos",
+          url: "/cadastroEquipamentos",
+        },        
+      ],
+    },     
   ],
 }
 
-const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações"];
+const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações", "Usuários", "Perfis", "Unidades", "Salas", "Equipamentos"];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   

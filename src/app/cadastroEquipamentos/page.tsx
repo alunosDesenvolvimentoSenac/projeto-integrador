@@ -1,5 +1,5 @@
-import { FormularioUsuario } from "@/components/formulario-usuario"; 
-import { listarUnidades, listarPerfis } from "@/app/actions/admin";
+import { FormularioEquipamento } from "@/components/formularioEquipamento";
+import { listarSalas } from "@/app/actions/admin";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -18,16 +18,14 @@ import {
 
 export default async function Page() {
   
-  const [listaUnidades, listaPerfis] = await Promise.all([
-    listarUnidades(),
-    listarPerfis()
-  ]);
+  // Busca a lista de salas para preencher o select
+  const listaSalas = await listarSalas();
 
   return (
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          {/* Header idêntico ao de Salas: com border-b e bg-background */}
+          {/* Header padrão com borda inferior */}
           <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
@@ -46,19 +44,19 @@ export default async function Page() {
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Cadastrar Usuários</BreadcrumbPage>
+                    <BreadcrumbPage>Cadastrar Equipamentos</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
           </header>
           
-          {/* Container idêntico ao de Salas: bg-muted/50 e padding-top ajustado */}
+          {/* Container padrão com fundo cinza e espaçamento superior */}
           <div className="flex min-h-svh flex-col items-center gap-6 bg-muted/50 p-6 pt-20 md:p-10 md:pt-24">
             <div className="flex w-full max-w-sm flex-col gap-6">
               
-                <FormularioUsuario unidades={listaUnidades} perfis={listaPerfis} />
-                
+              <FormularioEquipamento salas={listaSalas} />
+              
             </div>
           </div>
           

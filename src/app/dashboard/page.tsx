@@ -59,7 +59,6 @@ interface Usuario {
   role: "ADMIN" | "USER"
 }
 
-// Interface compatível com o seu EventPill
 interface Agendamento {
   id: number; 
   dia: number; 
@@ -93,6 +92,9 @@ export default function DashboardView() {
   const [selectedLab, setSelectedLab] = React.useState("0") 
   const [filterStatus, setFilterStatus] = React.useState("todos")
   const [filterPeriod, setFilterPeriod] = React.useState("todos")
+  
+  // Estado de Erro Visual do Select
+  const [isLabError, setIsLabError] = React.useState(false)
    
   // Modais
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, year: number, appointments: Agendamento[] } | null>(null)
@@ -128,7 +130,7 @@ export default function DashboardView() {
             })
           }
         } catch (error) { 
-            console.error(error); 
+           console.error(error); 
         }
       } else {
         setCurrentUser(null)
@@ -148,16 +150,6 @@ export default function DashboardView() {
       
       setAgendamentos(dadosAgendamentos as unknown as Agendamento[])
       setLaboratorios(dadosSalas)
-
-      if (dadosSalas.length > 0) {
-        setSelectedLab((prev) => {
-            if (prev && prev !== "0") {
-                const exists = dadosSalas.find(s => String(s.id) === prev);
-                return exists ? prev : String(dadosSalas[0].id);
-            }
-            return String(dadosSalas[0].id);
-        });
-      }
     } catch (error) {
       console.error(error)
       toast.error("Erro ao carregar dados.")
@@ -173,9 +165,29 @@ export default function DashboardView() {
   // --- HANDLERS ---
   const nextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1))
   const prevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1))
-  const monthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  
+  // Mês formatado (Janeiro de 2026)
+  const rawMonthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const monthName = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
 
-  const handleDayClick = (day: number, month: number) => {
+  // Validação Lab
+  const validateLabSelection = () => {
+    if (!selectedLab || selectedLab === "0") {
+        setIsLabError(true);
+        toast.error("Selecione um laboratório", { 
+            description: "É necessário escolher uma sala para visualizar a agenda.",
+            duration: 4000,
+            icon: <FlaskConical className="h-5 w-5 text-red-500" />
+        });
+        return false;
+    }
+    return true;
+  }
+
+  const handleDayClick = (day: number, month: number, isCurrentMonth: boolean) => {
+    if (!isCurrentMonth) return;
+    if (!validateLabSelection()) return;
+
     const year = date.getFullYear()
     const isAdmin = currentUser?.role === "ADMIN"
     const clickedDate = new Date(year, month, day);
@@ -187,20 +199,12 @@ export default function DashboardView() {
         return;
     }
 
-    if (!selectedLab || selectedLab === "0") {
-        toast.error("Selecione um laboratório", { description: "Selecione um laboratório no filtro superior." })
-        return; 
-    }
-
     const apps = getAppointments(day, month, year)
     setSelectedDayDetails({ day, month, year, appointments: apps })
   }
 
   const handleOpenAddForm = (periodo?: Periodo, enableRange: boolean = false) => {
-    if (!selectedLab || selectedLab === "0") {
-       toast.error("Selecione um laboratório", { description: "É necessário escolher uma sala antes." })
-       return
-    }
+    if (!validateLabSelection()) return;
 
     let targetDay = today.getDate();
     let targetMonth = today.getMonth();
@@ -291,27 +295,43 @@ export default function DashboardView() {
     }
   }
 
-  const handleDeleteAppointment = async (id: number, deleteAllInGroup: boolean = false) => {
+  const handleDeleteAppointment = async (id: number, deleteAllInGroup: boolean = false, status?: string) => {
     const toastId = toast.loading("Removendo...");
     try {
         if (deleteAllInGroup) {
             const targetApp = agendamentos.find(a => a.id === id);
-            if (targetApp && targetApp.groupId) await deleteSerieAction(targetApp.groupId);
-            else await deleteAgendamentoAction(id);
-        } else await deleteAgendamentoAction(id);
+            if (targetApp && targetApp.groupId) {
+                 await deleteSerieAction(targetApp.groupId, status || targetApp.status);
+            } else {
+                 await deleteAgendamentoAction(id);
+            }
+        } else {
+            await deleteAgendamentoAction(id);
+        }
 
-        setAgendamentos(prev => prev.filter(a => a.id !== id)) 
-        fetchData();
+        setAgendamentos(prev => prev.filter(a => {
+            if (deleteAllInGroup) {
+                const target = agendamentos.find(t => t.id === id);
+                if (!target?.groupId) return a.id !== id;
+                return !(a.groupId === target.groupId && a.status === (status || target.status));
+            }
+            return a.id !== id;
+        }));
+
+        await fetchData();
         
         if (selectedDayDetails) {
-            if (deleteAllInGroup) setSelectedDayDetails(null);
-            else {
+            if (deleteAllInGroup) {
+                setSelectedDayDetails(null);
+            } else {
                 const updatedList = selectedDayDetails.appointments.filter(a => a.id !== id) as Agendamento[];
                 setSelectedDayDetails({ ...selectedDayDetails, appointments: updatedList });
             }
         }
         toast.success("Removido!", { id: toastId });
-    } catch (error) { toast.error("Erro ao remover.", { id: toastId }); }
+    } catch (error) { 
+        toast.error("Erro ao remover.", { id: toastId }); 
+    }
   }
 
   const handleApproveAppointment = async (id: number, approveAllInGroup: boolean = false) => {
@@ -337,6 +357,7 @@ export default function DashboardView() {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days = [];
     const prevMonthDays = new Date(year, month, 0).getDate();
+    
     for (let i = firstDayOfMonth - 1; i >= 0; i--) days.push({ day: prevMonthDays - i, currentMonth: false, month: month - 1 });
     for (let i = 1; i <= daysInMonth; i++) days.push({ day: i, currentMonth: true, month: month });
     const remainingSlots = 42 - days.length; 
@@ -346,13 +367,17 @@ export default function DashboardView() {
 
   const getAppointments = (day: number, month: number, year: number) => {
     if (!selectedLab || selectedLab === "0") return [];
-    return agendamentos.filter((a) => {
+    
+    const filtered = agendamentos.filter((a) => {
         const matchDate = a.dia === day && a.mes === month && a.ano === year;
         const matchStatus = filterStatus === "todos" ? true : a.status === filterStatus;
         const matchPeriod = filterPeriod === "todos" ? true : a.periodo === filterPeriod;
         const matchLab = String(a.labId) === String(selectedLab);
         return matchDate && matchStatus && matchPeriod && matchLab;
-    })
+    });
+
+    const order = { "Manhã": 1, "Tarde": 2, "Noite": 3 };
+    return filtered.sort((a, b) => order[a.periodo] - order[b.periodo]);
   }
 
   // --- UI RENDER ---
@@ -379,29 +404,56 @@ export default function DashboardView() {
         <div className="flex flex-1 flex-col p-3 md:p-6">
           {/* HEADER CONTROLS */}
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
-             <div className="flex items-center gap-4 w-full xl:w-auto">
-                <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border shadow-sm p-1 h-10">
-                  <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8"><ChevronLeft className="h-5 w-5" /></Button>
-                  <div className="w-[1px] h-5 bg-border mx-1" />
-                  <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8"><ChevronRight className="h-5 w-5" /></Button>
-                </div>
-                <h2 className="text-3xl font-bold capitalize text-zinc-800 dark:text-zinc-100 tracking-tight whitespace-nowrap">{monthName}</h2>
+             {/* DATA E NAVEGAÇÃO UNIFICADOS (320px) */}
+             <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm h-10 w-full sm:w-[320px] px-1 gap-2">
+                <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+                   {monthName}
+                </span>
+
+                <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
              </div>
 
              <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
-                <div className="relative w-full sm:w-[280px]">
-                    <Select value={selectedLab} onValueChange={setSelectedLab}>
-                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full font-medium">
+                {/* SELECT LABORATÓRIO (320px) */}
+                <div className="relative w-full sm:w-[320px]">
+                    <Select 
+                        value={selectedLab} 
+                        onValueChange={(val) => {
+                            setSelectedLab(val);
+                            setIsLabError(false);
+                        }}
+                    >
+                        <SelectTrigger 
+                            className={cn(
+                                "h-10 bg-white dark:bg-zinc-900 shadow-sm w-full font-normal transition-all duration-300",
+                                isLabError 
+                                    ? "border-red-500 ring-2 ring-red-200 dark:ring-red-900 animate-in fade-in zoom-in-95" 
+                                    : "border-zinc-300 dark:border-zinc-700"
+                            )}
+                        >
                           <div className="flex items-center gap-2 truncate">
-                              <div className="bg-primary/10 p-1 rounded-md shrink-0"><FlaskConical className="h-4 w-4 text-primary" /></div>
+                              <div className={cn(
+                                  "p-1 rounded-md shrink-0 transition-colors",
+                                  isLabError ? "bg-red-100" : "bg-primary/10"
+                              )}>
+                                <FlaskConical className={cn(
+                                    "h-4 w-4", 
+                                    isLabError ? "text-red-500" : "text-primary"
+                                )} />
+                              </div>
                               <SelectValue placeholder="Selecione o laboratório" />
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0" disabled>Selecione uma sala...</SelectItem>
+                          <SelectItem value="0" disabled className="hidden">Selecione o laboratório...</SelectItem>
                           {laboratorios.map((lab) => (
                             <SelectItem key={lab.id} value={String(lab.id)}>
-                                {/* PARTE ALTERADA: Exibição do Código */}
                                 {lab.codigo && (
                                   <span className="font-mono font-bold text-muted-foreground mr-2 text-xs">
                                     {lab.codigo}
@@ -413,7 +465,8 @@ export default function DashboardView() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="w-full sm:w-[140px]">
+                
+                <div className="w-full sm:w-[180px]">
                     <Select value={filterPeriod} onValueChange={setFilterPeriod}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
                             <div className="flex items-center gap-2 truncate">
@@ -429,7 +482,7 @@ export default function DashboardView() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="w-full sm:w-[140px]">
+                <div className="w-full sm:w-[180px]">
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                         <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
                             <div className="flex items-center gap-2 truncate">
@@ -455,9 +508,12 @@ export default function DashboardView() {
              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-auto md:mr-0">Legenda</div>
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Manhã</span></div>
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-orange-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Tarde</span></div>
-             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-indigo-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Noite</span></div>
+             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-zinc-900 dark:bg-zinc-100"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Noite</span></div>
              <div className="h-3 w-[1px] bg-zinc-300 dark:bg-zinc-700 hidden sm:block"></div>
-             <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-red-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pendente</span></div>
+             
+             <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Confirmado</span></div>
+             <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pendente</span></div>
+             
              <div className="flex items-center gap-2 ml-auto"><span className="h-3 w-3 rounded-[2px] bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50"></span><span className="text-xs font-medium text-muted-foreground">Fim de Semana</span></div>
           </div>
 
@@ -470,21 +526,37 @@ export default function DashboardView() {
              </div>
              <div className="grid grid-cols-7 auto-rows-fr">
                 {calendarDays.map((slot, i) => {
-                  if (!slot.currentMonth) return <div key={i} className="border-b border-r bg-zinc-50/20 dark:bg-zinc-900/20" />;
                   let slotYear = date.getFullYear(); if (slot.month === -1) slotYear = date.getFullYear() - 1; if (slot.month === 12) slotYear = date.getFullYear() + 1;
                   const apps = getAppointments(slot.day, slot.month, slotYear);
                   const isToday = slot.day === today.getDate() && slot.month === today.getMonth() && date.getFullYear() === today.getFullYear();
                   const slotDate = new Date(slotYear, slot.month, slot.day);
                   const dayOfWeek = slotDate.getDay(); const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                  const isOtherMonth = !slot.currentMonth;
 
                   return (
-                    <div key={i} onClick={() => !isWeekend && handleDayClick(slot.day, slot.month)} className={cn("relative border-b border-r p-1 md:p-2 transition-all flex flex-col gap-1 min-h-[140px] select-none", isWeekend ? "bg-red-50/40 dark:bg-red-950/10 cursor-not-allowed" : "bg-background cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50")}>
+                    <div 
+                        key={i} 
+                        onClick={() => !isWeekend && !isOtherMonth && handleDayClick(slot.day, slot.month, slot.currentMonth)} 
+                        className={cn(
+                            "relative border-b border-r p-1 md:p-2 transition-all flex flex-col gap-1 min-h-[140px] select-none",
+                            isOtherMonth 
+                                ? "bg-zinc-50/60 dark:bg-zinc-950/40 text-muted-foreground/30 cursor-default" 
+                                : isWeekend 
+                                    ? "bg-red-50/40 dark:bg-red-950/10 cursor-not-allowed" 
+                                    : "bg-background cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                        )}
+                    >
                       <div className="flex items-center justify-center md:justify-between mb-1">
-                          <span className={cn("text-xs md:text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full transition-colors", isToday ? "bg-primary text-primary-foreground shadow-md font-bold" : "text-zinc-600 dark:text-zinc-400", isWeekend && "text-zinc-400 dark:text-zinc-600")}>{slot.day}</span>
+                          <span className={cn(
+                                "text-xs md:text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full transition-colors",
+                                isToday ? "bg-primary text-primary-foreground shadow-md font-bold" : "text-zinc-600 dark:text-zinc-400",
+                                (isWeekend || isOtherMonth) && "text-zinc-400 dark:text-zinc-600 opacity-60"
+                            )}>
+                                {slot.day}
+                          </span>
                       </div>
                       
-                      {/* --- AQUI ENTRA O EVENT PILL NOVO --- */}
-                      {!isWeekend && (
+                      {!isWeekend && !isOtherMonth && (
                           <div className="flex flex-col gap-1.5 mt-1">
                             <div className="hidden md:flex flex-col gap-1.5">
                                 {apps.slice(0, 4).map((app) => <EventPill key={app.id} app={app} />)}
@@ -492,8 +564,8 @@ export default function DashboardView() {
                             </div>
                             <div className="flex md:hidden flex-wrap gap-1 justify-center content-end pb-1">
                                 {apps.map((app) => {
-                                    const dotColor = app.status === 'pendente' ? "bg-red-500" : app.periodo === 'Manhã' ? "bg-sky-500" : app.periodo === 'Tarde' ? "bg-orange-500" : "bg-indigo-500";
-                                    return <div key={app.id} className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
+                                    const dotColor = app.periodo === 'Manhã' ? "bg-sky-500" : app.periodo === 'Tarde' ? "bg-orange-500" : "bg-zinc-900 dark:bg-zinc-100";
+                                    return <div key={app.id} className={cn("h-1.5 w-1.5 rounded-full", dotColor, app.status === 'pendente' && "opacity-60")} />
                                 })}
                             </div>
                           </div>
@@ -509,12 +581,12 @@ export default function DashboardView() {
         <AppointmentFormDialog isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} formData={formInitialDate} onSave={handleSaveAppointment} laboratorios={laboratorios} currentUser={currentUser} isRangeMode={isRangeMode} />
         
       </SidebarInset>
-      <Toaster richColors position="top-center" className="z-[99999]" />
+      <Toaster richColors position="bottom-right" className="z-[99999]" />
     </SidebarProvider>
   )
 }
 
-// --- NOVO EVENT PILL (COMO SOLICITADO) ---
+// --- EVENT PILL ---
 interface EventPillProps {
   app: Agendamento
 }
@@ -523,7 +595,7 @@ export function EventPill({ app }: EventPillProps) {
   const dotColors = {
     Manhã: "bg-sky-500", 
     Tarde: "bg-orange-500", 
-    Noite: "bg-indigo-500", 
+    Noite: "bg-zinc-900 dark:bg-zinc-100", 
   }
 
   const isPendente = app.status === 'pendente';
@@ -532,54 +604,78 @@ export function EventPill({ app }: EventPillProps) {
     <div 
       className={cn(
         "group flex items-center gap-3 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-all duration-200",
-        // Estilos Base
         "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm",
         "hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md",
-        
-        // Estilo Pendente
-        isPendente && "bg-red-50/30 border-dashed border-red-200 dark:border-red-900/50"
+        isPendente && "bg-amber-50/50 border-dashed border-amber-200 dark:border-amber-900/50"
       )}
     >
-      {/* 1. Dot */}
       <div 
         className={cn(
-          "h-2 w-2 rounded-full ring-1 ring-offset-1 ring-offset-white dark:ring-offset-zinc-950 shrink-0",
-          isPendente 
-            ? "bg-red-500 ring-transparent" 
-            : cn(dotColors[app.periodo], "ring-transparent group-hover:ring-zinc-200 dark:group-hover:ring-zinc-700")
+          "h-2 w-2 rounded-full shrink-0", 
+          dotColors[app.periodo] 
         )} 
       />
       
       <div className="flex flex-1 items-center gap-2.5 overflow-hidden">
-          {/* 2. Sigla do Período */}
           <span className={cn(
             "text-[10px] font-bold uppercase tracking-widest shrink-0 w-[24px] text-center",
-            isPendente ? "text-red-600/70" : "text-muted-foreground/60"
+            isPendente ? "text-amber-600/90" : "text-muted-foreground/60"
           )}>
             {app.periodo.slice(0, 3)}
           </span>
-
-          {/* 3. Separador Vertical */}
           <div className="h-3 w-[1px] bg-zinc-200 dark:bg-zinc-800 shrink-0 group-hover:bg-zinc-300 transition-colors" />
-
-          {/* 4. Nome do Docente */}
           <span className={cn(
             "truncate leading-none flex-1",
-            isPendente ? "text-red-900/80 dark:text-red-200" : "text-zinc-700 dark:text-zinc-200"
+            isPendente ? "text-amber-900/80 dark:text-amber-200" : "text-zinc-700 dark:text-zinc-200"
           )}>
             {app.docente}
           </span>
+          {/* ÍCONE DE SÉRIE AO LADO DO STATUS (NO FIM DO PILL) */}
+          {app.groupId && (
+            <div className="ml-2 pl-2 border-l border-zinc-200 dark:border-zinc-700 shrink-0">
+               <Layers className="h-3 w-3 text-zinc-400 dark:text-zinc-500" />
+            </div>
+          )}
       </div>
     </div>
   )
 }
 
 function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDelete, onApprove, currentUser }: any) {
-    const [confirmationState, setConfirmationState] = React.useState<{ isOpen: boolean; type: 'delete' | 'approve'; item: { id: number, groupId?: string }; step: 'select-scope' | 'confirm'; scope: 'single' | 'series' | null; } | null>(null);
+    const [confirmationState, setConfirmationState] = React.useState<{ isOpen: boolean; type: 'delete' | 'approve'; item: { id: number, groupId?: string, status: string }; step: 'select-scope' | 'confirm'; scope: 'single' | 'series' | null; } | null>(null);
     React.useEffect(() => { if (!isOpen) setConfirmationState(null); }, [isOpen]);
     if (!data) return null
+    
     const periodosOrder: Periodo[] = ["Manhã", "Tarde", "Noite"]
     const isAdmin = currentUser?.role === "ADMIN"
+
+    const truncateText = (text: string, limit: number) => {
+        if (!text) return "";
+        return text.length > limit ? text.substring(0, limit) + "..." : text;
+    }
+
+    const renderSmartText = (fullText: string, limit: number, label: string, isItalic = false) => {
+        if (!fullText) return null;
+        const isTruncated = fullText.length > limit;
+        const baseClasses = cn("text-xs text-zinc-900 dark:text-zinc-100 break-all transition-colors leading-relaxed", isItalic && "italic");
+
+        if (!isTruncated) return <div className={cn(baseClasses, isItalic && "mt-2 bg-muted/30 p-2 rounded border border-transparent")}>{isItalic ? `"${fullText}"` : fullText}</div>;
+
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <div className={cn(baseClasses, "cursor-pointer hover:text-primary hover:underline decoration-primary/50 underline-offset-2", isItalic && "mt-2 bg-muted/30 hover:bg-muted/50 p-2 rounded border border-transparent hover:border-border")}>
+                        {isItalic ? `"${truncateText(fullText, limit)}"` : truncateText(fullText, limit)}
+                    </div>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="start" className="w-auto max-w-[280px] p-3 text-sm break-words shadow-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                    <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-wider mb-1 not-italic">{label}:</p>
+                    <span className={cn("text-zinc-900 dark:text-zinc-100", isItalic && "italic")}>{isItalic ? `"${fullText}"` : fullText}</span>
+                </PopoverContent>
+            </Popover>
+        );
+    }
+
     const isPeriodExpired = (period: Periodo) => {
         const selectedDate = new Date(data.year, data.month, data.day); const today = new Date(); today.setHours(0,0,0,0);
         if (selectedDate < today) return true; if (selectedDate > today) return false;
@@ -587,14 +683,33 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
         if (period === 'Manhã' && currentHour >= 12) return true; if (period === 'Tarde' && currentHour >= 18) return true; if (period === 'Noite' && currentHour >= 21) return true; 
         return false;
     }
+
     const handleInitialAction = (type: 'delete' | 'approve', app: Agendamento) => {
-        const hasSeries = !!app.groupId; setConfirmationState({ isOpen: true, type: type, item: { id: app.id, groupId: app.groupId }, step: hasSeries ? 'select-scope' : 'confirm', scope: hasSeries ? null : 'single' });
+        const hasSeries = !!app.groupId; 
+        setConfirmationState({ 
+            isOpen: true, 
+            type: type, 
+            item: { id: app.id, groupId: app.groupId, status: app.status }, 
+            step: hasSeries ? 'select-scope' : 'confirm', 
+            scope: hasSeries ? null : 'single' 
+        });
     }
-    const confirmAction = () => {
+
+    const confirmAction = async () => {
         if (!confirmationState) return; const isSeries = confirmationState.scope === 'series';
-        if (confirmationState.type === 'delete') onDelete(confirmationState.item.id, isSeries); else onApprove(confirmationState.item.id, isSeries);
+        
+        if (confirmationState.type === 'delete') {
+            if (isSeries && confirmationState.item.groupId) {
+                 onDelete(confirmationState.item.id, true, confirmationState.item.status);
+            } else {
+                 onDelete(confirmationState.item.id, false);
+            }
+        } else {
+            onApprove(confirmationState.item.id, isSeries);
+        }
         setConfirmationState(null);
     }
+
     return (
       <>
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -612,13 +727,31 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                     const agendamento = data.appointments.find((a: any) => a.periodo === periodo)
                     const expired = isPeriodExpired(periodo);
                     return (
-                        <div key={periodo} className={cn("group relative flex flex-col gap-2 rounded-xl border p-4 transition-all", agendamento ? "bg-card shadow-sm border-zinc-200 dark:border-zinc-800" : expired ? "bg-muted/40 border-transparent opacity-60" : "bg-muted/10 border-dashed hover:border-primary/30")}>
-                            {/* ... Reutilizando estrutura similar ao EventPill mas maior para o detalhe ... */}
+                        <div key={periodo} className={cn(
+                            "group relative flex flex-col gap-2 rounded-xl border p-4 transition-all",
+                            agendamento ? "bg-card shadow-sm border-zinc-200 dark:border-zinc-800" :
+                            expired ? "bg-red-50/50 border-red-200 dark:bg-red-900/10 dark:border-red-900/30 opacity-80" : 
+                            "bg-muted/10 border-dashed hover:border-primary/30",
+                            agendamento?.status === 'pendente' && "bg-amber-50/40 border-amber-200 border-dashed"
+                        )}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="gap-1.5 font-normal"><Clock className="h-3 w-3" />{periodo}</Badge>
-                                    {!agendamento && <span className={cn("text-[10px] font-medium uppercase tracking-wider", expired ? "text-muted-foreground" : "text-emerald-600")}>{expired ? "Encerrado" : "Disponível"}</span>}
-                                    {agendamento && <Badge variant={agendamento.status === 'confirmado' ? 'default' : 'secondary'} className={cn("text-[10px] h-5 px-1.5", agendamento.status === 'confirmado' && "bg-emerald-600 hover:bg-emerald-700")}>{agendamento.status}</Badge>}
+                                    {!agendamento && <span className={cn("text-[10px] font-medium uppercase tracking-wider", expired ? "text-red-500 font-bold" : "text-emerald-600")}>{expired ? "Encerrado" : "Disponível"}</span>}
+                                    {agendamento && <div className="flex items-center gap-2">
+                                        <Badge variant={agendamento.status === 'confirmado' ? 'default' : 'secondary'} className={cn(
+                                            "text-[10px] h-5 px-1.5", 
+                                            agendamento.status === 'confirmado' && "bg-emerald-600 hover:bg-emerald-700",
+                                            agendamento.status === 'pendente' && "bg-amber-500 hover:bg-amber-600 text-white"
+                                        )}>{agendamento.status}</Badge>
+
+                                        {/* ÍCONE DE SÉRIE AO LADO DO STATUS (NO CABEÇALHO) */}
+                                        {agendamento.groupId && (
+                                            <Badge variant="outline" className="h-5 px-1.5 gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800 text-[10px] pointer-events-none">
+                                                <Layers className="h-3 w-3" /> Série
+                                            </Badge>
+                                        )}
+                                    </div>}
                                 </div>
                                 {agendamento && isAdmin && (
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -630,14 +763,22 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                             {agendamento ? (
                                 <div className="pl-1 pt-1">
                                     <div className="flex items-start gap-3">
-                                        <div className="bg-primary/10 p-2 rounded-full mt-0.5"><User className="h-4 w-4 text-primary" /></div>
-                                        <div className="flex-1 space-y-0.5">
-                                            <p className="font-semibold text-sm leading-tight">{agendamento.docente}</p>
-                                            {agendamento.disciplina && <p className="text-xs text-muted-foreground">{agendamento.disciplina}</p>}
-                                            {agendamento.observacao && <div className="mt-2 text-xs bg-muted p-2 rounded text-muted-foreground italic">"{agendamento.observacao}"</div>}
+                                        <div className="bg-primary/10 p-2 rounded-full mt-0.5 shrink-0"><User className="h-4 w-4 text-primary" /></div>
+                                        <div className="flex-1 space-y-1 w-full min-w-0">
+                                            
+                                            {/* Nome */}
+                                            <p className="font-semibold text-sm leading-tight text-zinc-900 dark:text-zinc-100 truncate">
+                                                {agendamento.docente}
+                                            </p>
+                                            
+                                            {/* Disciplina (60 chars limit) */}
+                                            {renderSmartText(agendamento.disciplina, 60, "Disciplina")}
+
+                                            {/* Observação (100 chars limit) */}
+                                            {renderSmartText(agendamento.observacao, 100, "Observação", true)}
+
                                         </div>
                                     </div>
-                                    {agendamento.groupId && <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground"><Layers className="h-3 w-3" />Item de série recorrente</div>}
                                 </div>
                             ) : (
                                 !expired && <Button variant="ghost" size="sm" onClick={() => onAddClick(periodo)} className="w-full mt-1 border-2 border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5 text-primary justify-start h-auto py-2"><Plus className="mr-2 h-4 w-4" />Agendar este horário</Button>
@@ -649,6 +790,7 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
             </ScrollArea>
             </DialogContent>
         </Dialog>
+        {/* AlertDialog mantido igual */}
         <AlertDialog open={!!confirmationState} onOpenChange={(val) => !val && setConfirmationState(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader><AlertDialogTitle>Confirmação</AlertDialogTitle><AlertDialogDescription>{confirmationState?.step === 'select-scope' ? "Este agendamento faz parte de uma série. Como deseja prosseguir?" : "Tem certeza que deseja confirmar esta ação?"}</AlertDialogDescription></AlertDialogHeader>
@@ -667,6 +809,7 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
 }
 
 function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios, currentUser, isRangeMode }: any) {
+    // ... mantido igual ao anterior ...
     const [disciplina, setDisciplina] = React.useState("")
     const [labId, setLabId] = React.useState("")
     const [observacao, setObservacao] = React.useState("")

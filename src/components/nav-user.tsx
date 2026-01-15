@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, LogOut, } from "lucide-react"
+import { ChevronsUpDown, LogOut, Settings } from "lucide-react" // 1. Importei o ícone Settings
 import { useRouter } from "next/navigation"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase" 
@@ -13,6 +13,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup, // 2. Importei o Group para organizar
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -44,6 +45,12 @@ export function NavUser({
     } catch (error) {
       console.error("Erro ao deslogar:", error)
     }
+  }
+
+  // Função para navegar para configurações
+  const handleSettings = () => {
+    // Altere para a sua rota de configurações real
+    router.push("/dashboard/configuracoes") 
   }
 
   return (
@@ -84,9 +91,20 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
+            
             <DropdownMenuSeparator />
             
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+            {/* GRUPO DE CONFIGURAÇÕES */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={handleSettings} className="cursor-pointer">
+                <Settings />
+                Configurações
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600">
               <LogOut />
               Log out
             </DropdownMenuItem>

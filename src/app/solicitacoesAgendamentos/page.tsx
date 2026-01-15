@@ -169,7 +169,7 @@ export default function SolicitacoesPage() {
     Noite: "bg-zinc-800 text-zinc-100 dark:bg-zinc-700 dark:text-zinc-100 border-zinc-700",
   }
 
-  // --- LÓGICA DE LISTA ---
+  // --- LÓGICA DE LISTA (COM FILTRO DE FIM DE SEMANA) ---
   const organizedList = React.useMemo(() => {
     const filtered = agendamentos.filter(item => {
         const searchLower = searchText.toLowerCase()
@@ -209,17 +209,32 @@ export default function SolicitacoesPage() {
     filtered.forEach(item => {
         if (item.groupId) {
             if (!processedGroupIds.has(item.groupId)) {
-                const sortedGroupItems = groups[item.groupId].sort((a, b) => {
-                    const dateA = new Date(a.ano, a.mes, a.dia).getTime()
-                    const dateB = new Date(b.ano, b.mes, b.dia).getTime()
-                    return dateA - dateB
-                })
+                
+                // 1. PEGAR OS ITENS DO GRUPO
+                const rawGroupItems = groups[item.groupId];
 
-                result.push({ 
-                    type: 'group', 
-                    id: item.groupId, 
-                    items: sortedGroupItems 
-                })
+                // 2. FILTRAR APENAS DIAS DA SEMANA (Remove Sab=6 e Dom=0)
+                const groupItemsWithoutWeekends = rawGroupItems.filter(gItem => {
+                     const dateObj = new Date(gItem.ano, gItem.mes, gItem.dia);
+                     const dayOfWeek = dateObj.getDay();
+                     return dayOfWeek !== 0 && dayOfWeek !== 6;
+                });
+
+                // Se após filtrar sobrar itens, adiciona ao resultado
+                if (groupItemsWithoutWeekends.length > 0) {
+                    const sortedGroupItems = groupItemsWithoutWeekends.sort((a, b) => {
+                        const dateA = new Date(a.ano, a.mes, a.dia).getTime()
+                        const dateB = new Date(b.ano, b.mes, b.dia).getTime()
+                        return dateA - dateB
+                    })
+
+                    result.push({ 
+                        type: 'group', 
+                        id: item.groupId, 
+                        items: sortedGroupItems 
+                    })
+                }
+                
                 processedGroupIds.add(item.groupId)
             }
         } else {
@@ -269,8 +284,9 @@ export default function SolicitacoesPage() {
         }
       } else {
         if (isSeries) {
-            await deleteSerieAction(String(id))
-            toast.success("Série recusada/removida!")
+            const currentStatus = actionData.item?.status || 'pendente';
+            await deleteSerieAction(String(id), currentStatus)
+            toast.success(`Série ${currentStatus} recusada/removida!`)
         } else {
             await deleteAgendamentoAction(Number(id))
             toast.success("Agendamento recusado!")
@@ -279,12 +295,41 @@ export default function SolicitacoesPage() {
       setActionData({ ...actionData, isOpen: false })
       fetchData() 
     } catch (error) {
+      console.error(error)
       toast.error("Erro ao processar solicitação.")
     }
   }
 
   const AgendamentoCard = ({ item, isChild = false }: { item: Agendamento, isChild?: boolean }) => {
      const itemDate = new Date(item.ano, item.mes, item.dia)
+     
+     // FUNÇÃO DE TEXTO INTELIGENTE (OBSERVAÇÃO)
+     const renderSmartText = (text: string | undefined, limit: number) => {
+        if (!text) return null;
+        
+        const isTruncated = text.length > limit;
+        const truncatedText = text.substring(0, limit) + "...";
+
+        // Se couber, apenas exibe
+        if (!isTruncated) {
+            return <span>{text}</span>
+        }
+
+        // Se cortar, exibe Popover
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <span className="cursor-pointer hover:text-primary hover:underline underline-offset-2 break-all transition-colors">
+                        {truncatedText}
+                    </span>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto max-w-[300px] p-3 text-sm break-words shadow-lg border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Observação Completa</p>
+                    <p className="text-zinc-900 dark:text-zinc-100">{text}</p>
+                </PopoverContent>
+            </Popover>
+        )
+     }
      
      return (
         <Card className={cn(
@@ -296,7 +341,6 @@ export default function SolicitacoesPage() {
                     "flex flex-col items-center justify-center p-4 min-w-[120px] border-b sm:border-b-0 sm:border-r border-zinc-100 dark:border-zinc-800",
                     isChild ? "bg-white dark:bg-zinc-950" : "bg-zinc-50 dark:bg-zinc-900"
                 )}>
-                    {/* CORREÇÃO AQUI: font-medium e text-muted-foreground para ficar cinza e leve */}
                     <span className="text-3xl font-medium text-muted-foreground">{item.dia}</span>
                     <span className="text-sm font-medium uppercase text-muted-foreground">
                         {format(itemDate, 'MMM', { locale: ptBR })}
@@ -337,7 +381,8 @@ export default function SolicitacoesPage() {
                     {item.observacao && (
                         <div className="mt-2 text-sm bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 p-2 rounded-md border border-amber-100 dark:border-amber-900/50 flex gap-2 items-start">
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                            <span>{item.observacao}</span>
+                            {/* APLICANDO O TRUNCAMENTO COM LIMITE DE 100 CARACTERES */}
+                            <span className="break-all">{renderSmartText(item.observacao, 100)}</span>
                         </div>
                     )}
                 </div>
@@ -623,16 +668,13 @@ export default function SolicitacoesPage() {
                         
                         {/* 1. DATA E PERÍODO */}
                         <div className="flex flex-col gap-1">
-                            {/* TÍTULO EM PRETO/FORTE */}
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Data do Agendamento</span>
                             
-                            {/* VALORES EM CINZA (text-muted-foreground) SEM font-bold/medium */}
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <CalendarDays className="h-3.5 w-3.5 text-muted-foreground"/>
                                 <span>{actionData.item.dia}/{actionData.item.mes + 1}/{actionData.item.ano}</span>
                                 <span className="text-xs text-muted-foreground/60 mx-1">•</span>
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    {/* CORREÇÃO AQUI: ICONE LAYERS PARA SÉRIE */}
                                     {actionData.item.groupId 
                                         ? <Layers className="h-3.5 w-3.5" /> 
                                         : <Clock className="h-3.5 w-3.5" />
@@ -655,9 +697,7 @@ export default function SolicitacoesPage() {
 
                         {/* 2. DOCENTE */}
                         <div className="flex flex-col gap-1">
-                             {/* TÍTULO EM PRETO/FORTE */}
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Docente</span>
-                            {/* VALOR EM CINZA */}
                             <span className="text-base text-muted-foreground leading-none">
                                 {actionData.item.docente}
                             </span>
@@ -667,9 +707,7 @@ export default function SolicitacoesPage() {
 
                         {/* 3. LABORATÓRIO */}
                         <div className="flex flex-col gap-1">
-                             {/* TÍTULO EM PRETO/FORTE */}
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Laboratório</span>
-                            {/* VALOR EM CINZA */}
                             <span className="text-muted-foreground flex items-center gap-2">
                                 <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />
                                 {getLabName(actionData.item.labId)}
@@ -681,9 +719,7 @@ export default function SolicitacoesPage() {
                             <>
                                 <div className="h-px w-full bg-border/60" />
                                 <div className="flex flex-col gap-1">
-                                    {/* TÍTULO EM PRETO/FORTE */}
                                     <span className="text-xs font-bold uppercase text-foreground tracking-wider">Disciplina</span>
-                                    {/* VALOR EM CINZA */}
                                     <span className="text-muted-foreground">{actionData.item.disciplina}</span>
                                 </div>
                             </>
@@ -695,7 +731,7 @@ export default function SolicitacoesPage() {
                                 <div className="flex flex-col gap-0.5">
                                     <span className="text-xs font-bold text-violet-700 dark:text-violet-300">Série Recorrente</span>
                                     <span className="text-[11px] text-violet-600/80 dark:text-violet-300/80 leading-tight">
-                                        Esta ação pode ser aplicada para todos os dias agendados nesta série.
+                                        Esta ação será aplicada para todos os itens <strong>{actionData.item.status}s</strong> desta série.
                                     </span>
                                 </div>
                             </div>

@@ -317,6 +317,34 @@ export default function MeusAgendamentosPage() {
      const itemDate = new Date(item.ano, item.mes, item.dia)
      const isPast = itemDate < today;
 
+     // FUNÇÃO AUXILIAR DE RENDERIZAÇÃO DE TEXTO INTELIGENTE
+     const renderSmartText = (text: string | undefined, limit: number, label: string) => {
+        if (!text) return null;
+        
+        const isTruncated = text.length > limit;
+        const truncatedText = text.substring(0, limit) + "...";
+
+        // Se couber no limite, apenas exibe o texto (não clicável)
+        if (!isTruncated) {
+            return <span>{text}</span>
+        }
+
+        // Se passar do limite, mostra ... e habilita o Popover
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <span className="cursor-pointer hover:text-primary hover:underline underline-offset-2 break-all transition-colors">
+                        {truncatedText}
+                    </span>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto max-w-[300px] p-3 text-sm break-words shadow-lg border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">{label}</p>
+                    <p className="text-zinc-900 dark:text-zinc-100">{text}</p>
+                </PopoverContent>
+            </Popover>
+        )
+     }
+
      return (
         <Card 
             className={cn(
@@ -378,8 +406,9 @@ export default function MeusAgendamentosPage() {
                         </span>
                         {item.disciplina && (
                             <span className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-                                {item.disciplina}
+                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
+                                {/* TRUNCATE DISCIPLINA (60 caracteres) */}
+                                {renderSmartText(item.disciplina, 60, "Disciplina")}
                             </span>
                         )}
                     </div>
@@ -387,7 +416,8 @@ export default function MeusAgendamentosPage() {
                     {item.observacao && (
                         <div className="mt-2 text-sm bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 p-2 rounded-md border border-zinc-100 dark:border-zinc-800 flex gap-2 items-start">
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                            <span>{item.observacao}</span>
+                            {/* TRUNCATE OBSERVAÇÃO (100 caracteres) */}
+                            <span className="break-all">{renderSmartText(item.observacao, 140, "Observação")}</span>
                         </div>
                     )}
                 </div>
@@ -614,7 +644,7 @@ export default function MeusAgendamentosPage() {
 
                                     {/* LINHA INFERIOR COM DETALHES */}
                                     <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-2 mt-1">
-                                        {/* DATA COM ICONE (CORRIGIDO PARA CINZA) */}
+                                        {/* DATA COM ICONE */}
                                         <span className="flex items-center gap-1.5">
                                             <CalendarIcon className="h-3.5 w-3.5" />
                                             {firstDate.getTime() === lastDate.getTime() 

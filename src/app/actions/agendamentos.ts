@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { agendamentos, usuarios, salas } from "@/db/migrations/schema"; 
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, and } from "drizzle-orm"; // ADICIONADO 'and' AQUI
 import { revalidatePath } from "next/cache";
 
 const HORARIOS = {
@@ -25,7 +25,7 @@ export async function getAgendamentosAction() {
         // Novos campos
         observacao: agendamentos.observacao,
         codigoSerie: agendamentos.codigoSerie,
-        disciplina: agendamentos.disciplina // <--- 1. ADICIONADO AQUI PARA BUSCAR DO BANCO
+        disciplina: agendamentos.disciplina 
       })
       .from(agendamentos)
       .leftJoin(usuarios, eq(agendamentos.idUsuario, usuarios.idUsuario));
@@ -80,7 +80,7 @@ export async function saveAgendamentoAction(items: any[], userId: number) {
         idTurma: null, 
         observacao: item.observacao ?? null,
         codigoSerie: item.groupId ?? null,
-        disciplina: item.disciplina ?? null // <--- 2. ADICIONADO AQUI PARA GRAVAR NO BANCO
+        disciplina: item.disciplina ?? null 
       };
     });
 
@@ -104,11 +104,24 @@ export async function deleteAgendamentoAction(id: number) {
   }
 }
 
-// --- DELETAR SÉRIE INTEIRA ---
-export async function deleteSerieAction(codigoSerie: string) {
+// --- DELETAR SÉRIE INTEIRA (FILTRANDO POR STATUS) ---
+// Atualizado para aceitar 'status' e usar 'and()'
+export async function deleteSerieAction(codigoSerie: string, status?: string) {
   try {
-    // Deleta TODOS que tiverem esse código de série
-    await db.delete(agendamentos).where(eq(agendamentos.codigoSerie, codigoSerie));
+    if (status) {
+        // Se passar status, deleta apenas os itens daquela série com aquele status
+        await db.delete(agendamentos)
+            .where(
+                and(
+                    eq(agendamentos.codigoSerie, codigoSerie),
+                    eq(agendamentos.status, status as any)
+                )
+            );
+    } else {
+        // Fallback: se não passar status (uso antigo), deleta tudo da série
+        await db.delete(agendamentos).where(eq(agendamentos.codigoSerie, codigoSerie));
+    }
+    
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
