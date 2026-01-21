@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dialog"
 import { cadastrarUnidadeNoBanco } from "@/app/actions/admin"
 
-// Schema Zod
 const formSchema = z.object({
   descricaoUnidade: z.string().min(3, "A descrição deve ter pelo menos 3 caracteres"),
 });
@@ -45,13 +44,11 @@ export function FormularioUnidade({ className, ...props }: React.ComponentPropsW
     },
   })
 
-  // 1. Abre Modal
   function onPreSubmit(values: FormValues) {
     setDadosParaConfirmar(values)
     setOpen(true)
   }
 
-  // 2. Envia para o Banco
   async function onFinalSubmit() {
     if (!dadosParaConfirmar) return;
     setLoading(true);
@@ -80,8 +77,6 @@ export function FormularioUnidade({ className, ...props }: React.ComponentPropsW
         <form onSubmit={form.handleSubmit(onPreSubmit)}>
           
           <div className="flex flex-col gap-6">
-            
-            {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Unidades</h1>
               <p className="text-sm text-muted-foreground">Registre uma nova unidade do Senac</p>
@@ -89,7 +84,6 @@ export function FormularioUnidade({ className, ...props }: React.ComponentPropsW
 
             <div className="flex flex-col gap-6">
               
-              {/* Descrição da Unidade */}
               <FormField
                 control={form.control}
                 name="descricaoUnidade"
@@ -112,7 +106,6 @@ export function FormularioUnidade({ className, ...props }: React.ComponentPropsW
         </form>
       </Form>
 
-      {/* Modal de Confirmação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

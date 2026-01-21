@@ -1,11 +1,12 @@
-"use client" // 1. Obrigatório para usar hooks (useState, useRouter)
+"use client"
 
 import * as React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation" // Para redirecionar após login
-import { signInWithEmailAndPassword } from "firebase/auth" // Função do Firebase
-import { auth } from "@/lib/firebase" // Sua configuração do Firebase
-import { verificarPermissaoUsuario } from "@/app/actions/auth" // A Server Action (vamos confirmar abaixo)
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { signInWithEmailAndPassword, signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { verificarPermissaoUsuario } from "@/app/actions/auth"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { AlertCircle } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -25,58 +27,57 @@ export function LoginForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  // Função que lida com o envio do formulário
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault() // Impede a página de recarregar
+    event.preventDefault()
     setLoading(true)
     setError("")
 
-    // Captura os dados dos inputs
     const formData = new FormData(event.currentTarget)
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
     try {
-      // 1. Tenta logar no Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const firebaseUid = userCredential.user.uid
 
-      // 2. Verifica no Banco de Dados (Neon) quem é esse usuário
-      // Precisamos garantir que ele existe no SQL e pegar o perfil dele
       const resultadoBanco = await verificarPermissaoUsuario(firebaseUid)
 
       if (!resultadoBanco.sucesso) {
-        throw new Error(resultadoBanco.mensagem || "Erro ao verificar usuário no sistema.")
+        await signOut(auth) 
+        throw new Error(resultadoBanco.mensagem || "Acesso negado.")
       }
 
-      // 3. Sucesso! Redireciona para o Dashboard
       router.push("/dashboard") 
       
     } catch (err: unknown) {
       console.error(err)
-      // Tratamento básico de erros
-      // Verificamos se 'err' é um objeto e se tem a propriedade 'code'
-  if (typeof err === 'object' && err !== null && 'code' in err) {
-    // Agora o TypeScript sabe que é seguro acessar .code
-    const erroComCodigo = err as { code: string };
-    
-    if (erroComCodigo.code === 'auth/invalid-credential') {
-      setError("E-mail ou senha incorretos.");
-      return;
+
+      if (typeof err === 'object' && err !== null && 'code' in err) {
+        const erroComCodigo = err as { code: string };
+        if (erroComCodigo.code === 'auth/invalid-credential') {
+          setError("E-mail ou senha incorretos.");
+          return;
+        }
+        if (erroComCodigo.code === 'auth/user-disabled') {
+          setError("Esta conta foi desativada pelo administrador.");
+          return;
+        }
+      }
+
+      if (err instanceof Error) {
+        setError(err.message);
+        return;
+      }
+
+      setError("Ocorreu um erro ao tentar entrar. Tente novamente.");
+    } finally {
+      setLoading(false)
     }
   }
 
-  // Fallback para erro genérico
-  setError("Ocorreu um erro ao tentar entrar. Tente novamente.");
-} finally {
-  setLoading(false)
-}
-  }
-
-
   return (
     <form 
-      onSubmit={handleSubmit} // Adicionamos o evento aqui
+      onSubmit={handleSubmit}
       className={cn("flex flex-col gap-6", className)} 
       {...props}
     >
@@ -88,10 +89,10 @@ export function LoginForm({
           </p>
         </div>
 
-        {/* Exibe erro se houver */}
         {error && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
-            {error}
+          <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -99,27 +100,29 @@ export function LoginForm({
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input 
             id="email" 
-            name="email" // Importante para o FormData pegar o valor
+            name="email" 
             type="email" 
             placeholder="m@exemplo.com" 
             required 
-            disabled={loading} // Trava enquanto carrega
+            disabled={loading} 
           />
         </Field>
 
         <Field>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Senha</FieldLabel>
-            <a
-              href="#"
+            
+            <Link
+              href="/recovery"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Esqueceu sua senha?
-            </a>
+            </Link>
+            
           </div>
           <Input 
             id="password" 
-            name="password" // Importante para o FormData
+            name="password" 
             type="password" 
             required 
             disabled={loading}
@@ -128,10 +131,33 @@ export function LoginForm({
 
         <Field>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Entrando...
+                </>
+            ) : "Entrar"}
           </Button>
         </Field>
       </FieldGroup>
     </form>
   )
+}
+
+function Loader2({ className }: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
+    )
 }

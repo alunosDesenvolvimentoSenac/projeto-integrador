@@ -77,7 +77,6 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
-// --- TIPOS ---
 interface Agendamento {
   id: number
   dia: number
@@ -106,7 +105,6 @@ export default function SolicitacoesPage() {
   const [laboratorios, setLaboratorios] = React.useState<Sala[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   
-  // --- FILTROS ---
   const [searchText, setSearchText] = React.useState("")
   const [filterType, setFilterType] = React.useState<"all" | "single" | "series">("all")
   const [filterLab, setFilterLab] = React.useState<string>("all")
@@ -115,7 +113,6 @@ export default function SolicitacoesPage() {
 
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
   
-  // Estado do Modal
   const [actionData, setActionData] = React.useState<{
     isOpen: boolean
     type: 'approve' | 'reject'
@@ -126,7 +123,6 @@ export default function SolicitacoesPage() {
     item: null
   })
 
-  // --- BUSCA DADOS ---
   const fetchData = React.useCallback(async () => {
     setIsLoading(true)
     try {
@@ -162,14 +158,12 @@ export default function SolicitacoesPage() {
     return laboratorios.find(l => l.id === id)?.nome || `Lab ${id}`
   }, [laboratorios])
 
-  // --- CORES ---
   const periodColors = {
     Manhã: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     Tarde: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     Noite: "bg-zinc-800 text-zinc-100 dark:bg-zinc-700 dark:text-zinc-100 border-zinc-700",
   }
 
-  // --- LÓGICA DE LISTA (COM FILTRO DE FIM DE SEMANA) ---
   const organizedList = React.useMemo(() => {
     const filtered = agendamentos.filter(item => {
         const searchLower = searchText.toLowerCase()
@@ -210,17 +204,13 @@ export default function SolicitacoesPage() {
         if (item.groupId) {
             if (!processedGroupIds.has(item.groupId)) {
                 
-                // 1. PEGAR OS ITENS DO GRUPO
                 const rawGroupItems = groups[item.groupId];
-
-                // 2. FILTRAR APENAS DIAS DA SEMANA (Remove Sab=6 e Dom=0)
                 const groupItemsWithoutWeekends = rawGroupItems.filter(gItem => {
                      const dateObj = new Date(gItem.ano, gItem.mes, gItem.dia);
                      const dayOfWeek = dateObj.getDay();
                      return dayOfWeek !== 0 && dayOfWeek !== 6;
                 });
 
-                // Se após filtrar sobrar itens, adiciona ao resultado
                 if (groupItemsWithoutWeekends.length > 0) {
                     const sortedGroupItems = groupItemsWithoutWeekends.sort((a, b) => {
                         const dateA = new Date(a.ano, a.mes, a.dia).getTime()
@@ -242,7 +232,6 @@ export default function SolicitacoesPage() {
         }
     })
 
-    // Ordenação: Únicos primeiro
     return result.sort((a, b) => {
         if (a.type === 'single' && b.type === 'group') return -1
         if (a.type === 'group' && b.type === 'single') return 1
@@ -251,7 +240,6 @@ export default function SolicitacoesPage() {
 
   }, [agendamentos, searchText, filterType, filterLab, filterTurno, filterDate, getLabName])
 
-  // --- HANDLERS ---
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => 
       prev.includes(groupId) 
@@ -303,19 +291,16 @@ export default function SolicitacoesPage() {
   const AgendamentoCard = ({ item, isChild = false }: { item: Agendamento, isChild?: boolean }) => {
      const itemDate = new Date(item.ano, item.mes, item.dia)
      
-     // FUNÇÃO DE TEXTO INTELIGENTE (OBSERVAÇÃO)
      const renderSmartText = (text: string | undefined, limit: number) => {
         if (!text) return null;
         
         const isTruncated = text.length > limit;
         const truncatedText = text.substring(0, limit) + "...";
 
-        // Se couber, apenas exibe
         if (!isTruncated) {
             return <span>{text}</span>
         }
 
-        // Se cortar, exibe Popover
         return (
             <Popover>
                 <PopoverTrigger asChild>
@@ -381,7 +366,6 @@ export default function SolicitacoesPage() {
                     {item.observacao && (
                         <div className="mt-2 text-sm bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 p-2 rounded-md border border-amber-100 dark:border-amber-900/50 flex gap-2 items-start">
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                            {/* APLICANDO O TRUNCAMENTO COM LIMITE DE 100 CARACTERES */}
                             <span className="break-all">{renderSmartText(item.observacao, 100)}</span>
                         </div>
                     )}
@@ -417,7 +401,6 @@ export default function SolicitacoesPage() {
       <AppSidebar />
       <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950">
         
-        {/* HEADER */}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
@@ -436,7 +419,6 @@ export default function SolicitacoesPage() {
           </div>
         </header>
 
-        {/* CONTENT */}
         <div className="flex flex-1 flex-col p-4 md:p-8 max-w-6xl mx-auto w-full gap-6">
           
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -449,7 +431,6 @@ export default function SolicitacoesPage() {
             </Badge>
           </div>
 
-          {/* BARRA DE FILTROS */}
           <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border shadow-sm space-y-4">
               <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-1">
@@ -529,7 +510,6 @@ export default function SolicitacoesPage() {
               </div>
           </div>
 
-          {/* LISTA */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -550,12 +530,10 @@ export default function SolicitacoesPage() {
             <div className="space-y-4">
               {organizedList.map((entry, index) => {
                 
-                // SINGLE
                 if (entry.type === 'single') {
                     return <AgendamentoCard key={entry.data.id} item={entry.data} />
                 }
 
-                // GROUP
                 const isExpanded = expandedGroups.includes(entry.id);
                 const firstItem = entry.items[0]; 
                 const lastItem = entry.items[entry.items.length - 1];
@@ -594,7 +572,6 @@ export default function SolicitacoesPage() {
                                                 }
                                                 <span className="text-zinc-300 dark:text-zinc-700 mx-1">•</span>
                                                 
-                                                {/* ÍCONE DE AGRUPAMENTO (LAYERS) E TEXTO */}
                                                 <span className="flex items-center gap-1.5 text-muted-foreground">
                                                     <Layers className="h-3.5 w-3.5" />
                                                     {count} dias
@@ -648,7 +625,6 @@ export default function SolicitacoesPage() {
           )}
         </div>
 
-        {/* DIALOG DE CONFIRMAÇÃO */}
         <AlertDialog open={actionData.isOpen} onOpenChange={(val) => !val && setActionData(prev => ({...prev, isOpen: false}))}>
           <AlertDialogContent className="sm:max-w-[500px]">
              {actionData.item && (
@@ -663,10 +639,8 @@ export default function SolicitacoesPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
 
-                    {/* LAYOUT ATUALIZADO */}
                     <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-lg border text-sm flex flex-col gap-3 my-2">
                         
-                        {/* 1. DATA E PERÍODO */}
                         <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Data do Agendamento</span>
                             
@@ -695,7 +669,6 @@ export default function SolicitacoesPage() {
 
                         <div className="h-px w-full bg-border/60" />
 
-                        {/* 2. DOCENTE */}
                         <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Docente</span>
                             <span className="text-base text-muted-foreground leading-none">
@@ -705,7 +678,6 @@ export default function SolicitacoesPage() {
 
                         <div className="h-px w-full bg-border/60" />
 
-                        {/* 3. LABORATÓRIO */}
                         <div className="flex flex-col gap-1">
                             <span className="text-xs font-bold uppercase text-foreground tracking-wider">Laboratório</span>
                             <span className="text-muted-foreground flex items-center gap-2">
@@ -714,7 +686,6 @@ export default function SolicitacoesPage() {
                             </span>
                         </div>
 
-                        {/* 4. DISCIPLINA */}
                         {actionData.item.disciplina && (
                             <>
                                 <div className="h-px w-full bg-border/60" />

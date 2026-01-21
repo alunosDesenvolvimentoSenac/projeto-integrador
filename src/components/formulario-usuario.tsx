@@ -13,12 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select" 
 
-// Firebase e Server Action
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { cadastrarUsuarioNoBanco } from "@/app/actions/admin"
 
-// Tipagem das props atualizada para receber perfis
 interface FormularioProps extends React.ComponentPropsWithoutRef<"div"> {
   unidades: {
     idUnidade: number;
@@ -39,7 +37,7 @@ export function FormularioUsuario({
   
   const [loading, setLoading] = useState(false)
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("")
-  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("") // Novo State
+  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("")
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -56,17 +54,15 @@ export function FormularioUsuario({
         if (!unidadeSelecionada) throw new Error("Selecione a Unidade.");
         if (!perfilSelecionado) throw new Error("Selecione o Perfil de acesso.");
 
-        // 1. Cria usuário no Firebase
         const userCredential = await createUserWithEmailAndPassword(auth, email, password)
         const uid = userCredential.user.uid
 
-        // 2. Envia para o Banco com o Perfil Selecionado
         const result = await cadastrarUsuarioNoBanco(
             uid,
             nome,
             email,
             Number(unidadeSelecionada),
-            Number(perfilSelecionado) // Envia o ID escolhido
+            Number(perfilSelecionado)
         );
 
         if (result && result.success) {
@@ -108,7 +104,6 @@ export function FormularioUsuario({
               <Input id="email" name="email" type="email" placeholder="usuario@senac.com.br" required disabled={loading} />
             </div>
             
-            {/* SELECT UNIDADE */}
             <div className="grid gap-2">
               <Label htmlFor="unidade">Unidade</Label>
               <Select value={unidadeSelecionada} onValueChange={setUnidadeSelecionada} disabled={loading}>
@@ -125,7 +120,6 @@ export function FormularioUsuario({
               </Select>
             </div>
 
-            {/* SELECT PERFIL (NOVO) */}
             <div className="grid gap-2">
               <Label htmlFor="perfil">Perfil de Acesso</Label>
               <Select value={perfilSelecionado} onValueChange={setPerfilSelecionado} disabled={loading}>

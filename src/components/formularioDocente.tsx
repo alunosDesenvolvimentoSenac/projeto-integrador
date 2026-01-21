@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react" // 1. Importar useState
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -24,7 +24,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-// 2. Importar os componentes do Dialog
 import {
   Dialog,
   DialogContent,
@@ -54,9 +53,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function FormularioDocente({ unidades }: { unidades: Unidade[] }) {
-  // 3. Estado para controlar se o modal está aberto
   const [open, setOpen] = useState(false)
-  // 4. Estado para guardar os dados temporariamente enquanto o usuário revisa
   const [dadosParaConfirmar, setDadosParaConfirmar] = useState<FormValues | null>(null)
   
   const form = useForm({
@@ -71,25 +68,21 @@ export function FormularioDocente({ unidades }: { unidades: Unidade[] }) {
     },
   })
 
-  // 5. Essa função roda quando o usuário clica no primeiro botão (validação ok)
   function onPreSubmit(values: FormValues) {
-    setDadosParaConfirmar(values) // Salva os dados
-    setOpen(true) // Abre o modal
+    setDadosParaConfirmar(values)
+    setOpen(true)
   }
 
-  // 6. Essa função roda quando o usuário clica em "Confirmar" DENTRO do modal
   function onFinalSubmit() {
     if (!dadosParaConfirmar) return;
 
-    // AQUI VAI SUA LÓGICA FINAL DE ENVIO PARA O BANCO
     console.log("Enviando para o servidor:", dadosParaConfirmar)
     alert("Cadastro realizado com sucesso!")
     
-    setOpen(false) // Fecha o modal
-    form.reset() // Limpa o formulário (opcional)
+    setOpen(false)
+    form.reset()
   }
 
-  // Função auxiliar para achar o nome da unidade baseada no ID selecionado
   const getNomeUnidade = (id: string) => {
     return unidades.find(u => String(u.idUnidade) === id)?.descricaoUnidade || "Não encontrada";
   }
@@ -213,7 +206,6 @@ export function FormularioDocente({ unidades }: { unidades: Unidade[] }) {
         </form>
       </Form>
 
-      {/* --- 7. Modal de Confirmação --- */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

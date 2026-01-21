@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react" // 1. Importei o ícone Settings
+import { ChevronsUpDown, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase" 
@@ -13,7 +13,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup, // 2. Importei o Group para organizar
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -33,6 +32,7 @@ export function NavUser({
     name: string
     email: string
     avatar: string
+    role: string 
   }
 }) {
   const { isMobile } = useSidebar()
@@ -47,11 +47,16 @@ export function NavUser({
     }
   }
 
-  // Função para navegar para configurações
-  const handleSettings = () => {
-    // Altere para a sua rota de configurações real
-    router.push("/dashboard/configuracoes") 
+  const getInitials = (name: string) => {
+    if (!name) return "CN";
+    const parts = name.trim().split(" ").filter(Boolean);
+    if (parts.length === 0) return "CN";
+    const firstInitial = parts[0][0];
+    const secondInitial = parts[1] ? parts[1][0] : "";
+    return (firstInitial + secondInitial).toUpperCase();
   }
+
+  const userInitials = getInitials(user.name);
 
   return (
     <SidebarMenu>
@@ -64,12 +69,18 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
               </Avatar>
+              
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate text-xs font-medium text-zinc-500">
+                    {user.role}
+                </span>
+                
+                <span className="truncate text-[10px] text-muted-foreground">{user.email}</span>
               </div>
+              
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -83,24 +94,21 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
                 </Avatar>
+                
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-semibold">{user.name}</span>
+                  
+                  <span className="truncate text-xs font-medium text-zinc-500">
+                      {user.role}
+                  </span>
+
+                  <span className="truncate text-[10px] text-muted-foreground">{user.email}</span>
                 </div>
+
               </div>
             </DropdownMenuLabel>
-            
-            <DropdownMenuSeparator />
-            
-            {/* GRUPO DE CONFIGURAÇÕES */}
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={handleSettings} className="cursor-pointer">
-                <Settings />
-                Configurações
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             
             <DropdownMenuSeparator />
             

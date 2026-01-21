@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Sistema de Agendamento de Laboratórios",
 };
 
-const inter = Inter({ // Added Inter font configuration
+const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });

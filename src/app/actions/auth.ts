@@ -31,6 +31,7 @@ export async function sincronizarUsuario(uid: string, email: string, nome: strin
       nome: nome,
       idUnidade: 1, // Ajuste conforme sua regra de negócio
       idPerfil: 4,  // ID do perfil padrão (ex: Aluno)
+      ativo: true,  // Garante que nasce ativo
     }).returning();
 
     const usuarioCriado = novoUsuario[0];
@@ -67,7 +68,13 @@ export async function verificarPermissaoUsuario(uidFirebase: string) {
       return { sucesso: false, mensagem: "Usuário não cadastrado no sistema escolar." };
     }
 
-    // Serialização segura de BigInt
+    if (usuarioEncontrado.usuario.ativo === false) {
+        return { 
+            sucesso: false, 
+            mensagem: "Seu acesso está suspenso." 
+        };
+    }
+
     const usuarioSerializado = {
       ...usuarioEncontrado.usuario,
       idUsuario: Number(usuarioEncontrado.usuario.idUsuario),
@@ -97,7 +104,9 @@ export async function getDadosUsuarioSidebar(uidFirebase: string) {
         idUsuario: usuarios.idUsuario,
         nomeUsuario: usuarios.nome,
         nomeUnidade: unidades.descricaoUnidade,
-        cargo: perfis.descricaoPerfil
+        cargo: perfis.descricaoPerfil,
+        // Adicionando permissão para ver na sidebar se necessário
+        idPerfil: perfis.idPerfil
       })
       .from(usuarios)
       .innerJoin(unidades, eq(usuarios.idUnidade, unidades.idUnidade))
@@ -107,7 +116,9 @@ export async function getDadosUsuarioSidebar(uidFirebase: string) {
     if (!resultado[0]) return null;
     return {
       ...resultado[0],
-      idUsuario: Number(resultado[0].idUsuario)
+      idUsuario: Number(resultado[0].idUsuario),
+      // Adicionando conversão para number caso precise usar na lógica da sidebar
+      id_perfil: Number(resultado[0].idPerfil)
     };
   } catch (error) {
     console.error("Erro ao buscar dados da sidebar:", error);

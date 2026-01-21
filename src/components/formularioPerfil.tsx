@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/dialog"
 import { cadastrarPerfilNoBanco } from "@/app/actions/admin"
 
-// Schema Zod
 const formSchema = z.object({
   descricao: z.string().min(3, "A descrição deve ter pelo menos 3 caracteres"),
   isAdmin: z.boolean().default(false),
@@ -49,13 +48,11 @@ export function FormularioPerfil({ className, ...props }: React.ComponentPropsWi
     },
   })
 
-  // 1. Abre Modal
   function onPreSubmit(values: FormValues) {
     setDadosParaConfirmar(values)
     setOpen(true)
   }
 
-  // 2. Envia para o Banco
   async function onFinalSubmit() {
     if (!dadosParaConfirmar) return;
     setLoading(true);
@@ -91,7 +88,6 @@ export function FormularioPerfil({ className, ...props }: React.ComponentPropsWi
           
           <div className="flex flex-col gap-6">
             
-            {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Perfis</h1>
               <p className="text-sm text-muted-foreground">Defina novos níveis de acesso</p>
@@ -99,7 +95,6 @@ export function FormularioPerfil({ className, ...props }: React.ComponentPropsWi
 
             <div className="flex flex-col gap-6">
               
-              {/* Descrição do Perfil */}
               <FormField
                 control={form.control}
                 name="descricao"
@@ -114,20 +109,20 @@ export function FormularioPerfil({ className, ...props }: React.ComponentPropsWi
                 )}
               />
 
-              {/* Checkbox Admin */}
               <FormField
                 control={form.control}
                 name="isAdmin"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        className="h-6 w-6 border-zinc-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>
+                      <FormLabel className="text-base cursor-pointer">
                         Acesso Administrativo
                       </FormLabel>
                       <FormDescription>
@@ -146,7 +141,6 @@ export function FormularioPerfil({ className, ...props }: React.ComponentPropsWi
         </form>
       </Form>
 
-      {/* Modal de Confirmação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

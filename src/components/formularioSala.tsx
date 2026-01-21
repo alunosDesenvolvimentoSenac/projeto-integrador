@@ -124,7 +124,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
           
           <div className="flex flex-col gap-6">
             
-            {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Salas</h1>
               <p className="text-sm text-muted-foreground">Adicione novos laboratórios ou salas</p>
@@ -132,8 +131,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
 
             <div className="flex flex-col gap-6">
               
-              {/* Código da Sala */}
-              {/* Usando a estrutura grid gap-2 igual ao FormularioUsuario */}
               <FormField
                 control={form.control}
                 name="codigoSala"
@@ -148,7 +145,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
                 )}
               />
 
-              {/* Descrição */}
               <FormField
                 control={form.control}
                 name="descricaoSala"
@@ -163,7 +159,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
                 )}
               />
 
-              {/* Capacidade */}
               <FormField
                 control={form.control}
                 name="capacidade"
@@ -185,7 +180,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
                 )}
               />
 
-              {/* Unidade */}
               <FormField
                 control={form.control}
                 name="unidadeId"
@@ -211,7 +205,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
                 )}
               />
 
-              {/* Área */}
               <FormField
                 control={form.control}
                 name="areaId"
@@ -245,7 +238,6 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
         </form>
       </Form>
 
-      {/* Modal de Confirmação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea" // Opcional, se preferir Input normal, troque aqui
+import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
@@ -36,14 +36,12 @@ import {
 } from "@/components/ui/dialog"
 import { cadastrarEquipamentoNoBanco } from "@/app/actions/admin"
 
-// Tipos
 type Sala = {
   idSala: number;
   codigoSala: string;
   descricaoSala: string;
 };
 
-// Schema Zod
 const formSchema = z.object({
   descricao: z.string().min(3, "A descrição deve ter pelo menos 3 caracteres"),
   quantidade: z.coerce.number().min(1, "Quantidade mínima é 1"),
@@ -74,13 +72,11 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
     },
   })
 
-  // 1. Abre Modal
   function onPreSubmit(values: FormValues) {
     setDadosParaConfirmar(values)
     setOpen(true)
   }
 
-  // 2. Envia para o Banco
   async function onFinalSubmit() {
     if (!dadosParaConfirmar) return;
     setLoading(true);
@@ -128,16 +124,9 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
         <form onSubmit={form.handleSubmit(onPreSubmit)}>
           
           <div className="flex flex-col gap-6">
-            
-            {/* Cabeçalho */}
-            <div className="flex flex-col items-center gap-2">
-              <h1 className="text-xl font-bold">Cadastro de Equipamentos</h1>
-              <p className="text-sm text-muted-foreground">Registre novos itens e vincule a uma sala</p>
-            </div>
 
             <div className="flex flex-col gap-6">
-              
-              {/* Descrição */}
+            
               <FormField
                 control={form.control}
                 name="descricao"
@@ -152,7 +141,6 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 )}
               />
 
-              {/* Quantidade */}
               <FormField
                 control={form.control}
                 name="quantidade"
@@ -172,7 +160,6 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 )}
               />
 
-              {/* Sala (Select) */}
               <FormField
                 control={form.control}
                 name="salaId"
@@ -198,7 +185,6 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 )}
               />
 
-              {/* Observação */}
               <FormField
                 control={form.control}
                 name="observacao"
@@ -206,7 +192,6 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                   <FormItem className="grid gap-2 space-y-0">
                     <FormLabel>Observação (Opcional)</FormLabel>
                     <FormControl>
-                      {/* Pode usar Input normal aqui se preferir */}
                       <Textarea 
                         placeholder="Ex: Patrimônio nº 123456" 
                         className="resize-none" 
@@ -218,21 +203,21 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 )}
               />
 
-              {/* Checkbox Ativo */}
               <FormField
                 control={form.control}
                 name="ativo"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        className="h-6 w-6 border-zinc-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Item Ativo
+                      <FormLabel className="text-base cursor-pointer">
+                        Equipamento disponível
                       </FormLabel>
                       <FormDescription>
                         Disponível para uso imediato.
@@ -249,8 +234,6 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
           </div>
         </form>
       </Form>
-
-      {/* Modal de Confirmação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
