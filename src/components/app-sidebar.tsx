@@ -28,7 +28,18 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
+<<<<<<< HEAD
 const DATA_MENU = {
+=======
+
+
+// 2. ADICIONE O ITEM NO MENU
+const DATA_MENU = {
+  teams: [
+    {
+    },
+  ],
+>>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
   navMain: [
     {
       title: "Agendamento",

@@ -168,7 +168,7 @@ export async function getSalasAction() {
         codigo: salas.codigoSala
       })
       .from(salas)
-      .orderBy(asc(salas.descricaoSala));
+      .orderBy(asc(salas.codigoSala));
       
     return data;
   } catch (error) {

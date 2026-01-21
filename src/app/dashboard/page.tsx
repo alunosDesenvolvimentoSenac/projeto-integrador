@@ -363,7 +363,7 @@ export default function DashboardView() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950 flex flex-col min-h-screen">
+      <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950 flex flex-col flex-1 h-full overflow-hidden">
         
         <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-20">
           <div className="flex items-center gap-2">
@@ -381,8 +381,16 @@ export default function DashboardView() {
         </header>
 
         <div className="flex flex-1 flex-col p-3 md:p-6">
+<<<<<<< HEAD
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
              <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm h-10 w-full sm:w-[320px] px-1 gap-2">
+=======
+          {/* HEADER CONTROLS */}
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4 shrink-0">
+             
+             {/* DATA E NAVEGAÇÃO (Fixo à esquerda ou topo em mobile) */}
+            <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm h-9 w-full sm:w-[320px] px-1 gap-2">
+>>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
                 <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -396,6 +404,7 @@ export default function DashboardView() {
                 </Button>
              </div>
 
+<<<<<<< HEAD
              <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
                 <div className="relative w-full sm:w-[320px]">
                     <Select 
@@ -413,40 +422,39 @@ export default function DashboardView() {
                                     : "border-zinc-300 dark:border-zinc-700"
                             )}
                         >
+=======
+
+             {/* FILTROS E BOTÃO (Com flex-wrap para quebrar linha se necessário) */}
+             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full xl:w-auto ml-auto">
+                
+                {/* SELECT LABORATÓRIO (Flexível: ocupa espaço disponível) */}
+                <div className="relative w-full sm:flex-1 min-w-[200px] xl:w-[280px]">
+                    <Select value={selectedLab} onValueChange={setSelectedLab}>
+                        <SelectTrigger className="h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
+>>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
                           <div className="flex items-center gap-2 truncate">
-                              <div className={cn(
-                                  "p-1 rounded-md shrink-0 transition-colors",
-                                  isLabError ? "bg-red-100" : "bg-primary/10"
-                              )}>
-                                <FlaskConical className={cn(
-                                    "h-4 w-4", 
-                                    isLabError ? "text-red-500" : "text-primary"
-                                )} />
-                              </div>
-                              <SelectValue placeholder="Selecione o laboratório" />
+                              <div className="bg-primary/10 p-1 rounded-md shrink-0"><FlaskConical className="h-3 w-3 text-primary" /></div>
+                              <SelectValue placeholder="Laboratório" />
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0" disabled className="hidden">Selecione o laboratório...</SelectItem>
-                          {laboratorios.map((lab) => (
+                        <SelectItem value="0" disabled>Selecione uma sala...</SelectItem>
+                        {laboratorios.map((lab) => (
                             <SelectItem key={lab.id} value={String(lab.id)}>
-                                {lab.codigo && (
-                                  <span className="font-mono font-bold text-muted-foreground mr-2 text-xs">
-                                    {lab.codigo}
-                                  </span>
-                                )}
+                                {lab.codigo && <span className="font-mono font-bold text-muted-foreground mr-2 ">{lab.codigo}</span>}
                                 {lab.nome}
                             </SelectItem>
-                          ))}
+                        ))}
                         </SelectContent>
                     </Select>
                 </div>
-                
-                <div className="w-full sm:w-[180px]">
+
+                {/* FILTRO PERÍODO */}
+                <div className="w-full sm:w-auto sm:min-w-[130px]">
                     <Select value={filterPeriod} onValueChange={setFilterPeriod}>
-                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
+                        <SelectTrigger className="h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
                             <div className="flex items-center gap-2 truncate">
-                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0"><Clock className="h-4 w-4 text-zinc-500 dark:text-zinc-400" /></div>
+                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0"><Clock className="h-3 w-3 text-zinc-500 dark:text-zinc-400" /></div>
                                 <SelectValue placeholder="Período" />
                             </div>
                         </SelectTrigger>
@@ -458,11 +466,13 @@ export default function DashboardView() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="w-full sm:w-[180px]">
+
+                {/* FILTRO STATUS */}
+                <div className="w-full sm:w-auto sm:min-w-[130px]">
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                        <SelectTrigger className="h-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full">
+                        <SelectTrigger className="h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
                             <div className="flex items-center gap-2 truncate">
-                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0"><ListFilter className="h-4 w-4 text-zinc-500 dark:text-zinc-400" /></div>
+                                <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-md shrink-0"><ListFilter className="h-3 w-3 text-zinc-500 dark:text-zinc-400" /></div>
                                 <SelectValue placeholder="Status" />
                             </div>
                         </SelectTrigger>
@@ -473,11 +483,17 @@ export default function DashboardView() {
                         </SelectContent>
                     </Select>
                 </div>
-                <Button className="px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto" onClick={() => handleOpenAddForm(undefined, true)}>
-                    <Plus className="mr-2 h-5 w-5" /> Novo Agendamento
+
+                {/* BOTÃO AGENDAR (Fixo, mas flexível se precisar) */}
+                <Button className="h-9 px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto  bg-primary hover:bg-primary/90" onClick={() => handleOpenAddForm(undefined, true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Agendar Período
                 </Button>
              </div>
           </div>
+<<<<<<< HEAD
+=======
+          {/* LEGENDA */}
+>>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
           <div className="flex flex-wrap items-center gap-6 mb-4 px-2 py-2 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-lg border border-zinc-100 dark:border-zinc-800 shrink-0">
              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-auto md:mr-0">Legenda</div>
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Manhã</span></div>
