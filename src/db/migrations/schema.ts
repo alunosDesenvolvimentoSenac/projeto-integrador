@@ -84,6 +84,7 @@ export const usuarios = pgTable("usuarios", {
 	nome: varchar({ length: 255 }).notNull(),
 	email: varchar({ length: 255 }).notNull(),
 	matricula: varchar({ length: 50 }),
+	ativo: boolean("ativo").default(true).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	idUnidade: bigint("id_unidade", { mode: "number" }).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
