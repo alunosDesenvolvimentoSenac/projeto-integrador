@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react" // Adicione useEffect
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, Plus, Filter, Link } from "lucide-react"
+import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 // ... (mantenha os outros imports iguais) ... imports de dialog, select, sonner, etc.

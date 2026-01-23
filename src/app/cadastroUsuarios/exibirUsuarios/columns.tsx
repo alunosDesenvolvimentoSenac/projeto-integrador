@@ -1,16 +1,9 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react" // Removido MoreHorizontal
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+// Removidos os imports do DropdownMenu
 import {
   Dialog,
   DialogContent,
@@ -36,7 +29,6 @@ import { useState, useTransition } from "react"
 import { toast } from "sonner" 
 import { updateUsuarioAction, toggleStatusUsuarioAction, deleteUsuarioAction } from "@/app/actions/usuarios"
 
-// Tipo de dados alinhado com o retorno do banco
 export type Usuario = {
   id: number
   nome: string
@@ -60,7 +52,7 @@ export const columns: ColumnDef<Usuario>[] = [
     header: "Perfil",
   },
   {
-    accessorKey: "status", // STATUS MOVIDO PARA CÁ (DEPOIS DO PERFIL)
+    accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
       const ativo = row.original.ativo
@@ -74,32 +66,29 @@ export const columns: ColumnDef<Usuario>[] = [
   },
   {
     id: "actions",
-    header: "Ações", // CABEÇALHO ADICIONADO AQUI
+    header: "Ações",
+    // Aqui chamamos o componente modificado
     cell: ({ row }) => <CellAction usuario={row.original} />,
   },
 ]
 
-// Componente auxiliar para gerenciar os Modais de cada linha
 function CellAction({ usuario }: { usuario: Usuario }) {
   const [openEdit, setOpenEdit] = useState(false)
   const [openDelete, setOpenDelete] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Estados locais do formulário
   const [nome, setNome] = useState(usuario.nome)
   const [status, setStatus] = useState(usuario.ativo ? "ativo" : "inativo")
 
   const handleEdit = async () => {
     startTransition(async () => {
       try {
-        // 1. Atualiza dados cadastrais
         await updateUsuarioAction(usuario.id, {
           nome: nome,
           email: usuario.email,
           idPerfil: usuario.idPerfil
         })
 
-        // 2. Atualiza status se houve mudança
         const novoStatusBool = status === "ativo"
         if (novoStatusBool !== usuario.ativo) {
           await toggleStatusUsuarioAction(usuario.id, novoStatusBool)
@@ -127,26 +116,30 @@ function CellAction({ usuario }: { usuario: Usuario }) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Abrir menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => setOpenEdit(true)}>
-            <Pencil className="mr-2 h-4 w-4" /> Editar
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setOpenDelete(true)} className="text-red-600 focus:text-red-600">
-            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* MUDANÇA AQUI: Substituímos o Dropdown por uma div com flex e botões diretos */}
+      <div className="flex items-center gap-2">
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setOpenEdit(true)}
+            title="Editar Usuário"
+            className="h-8 w-8"
+        >
+            <Pencil className="h-4 w-4" />
+        </Button>
 
-      {/* Modal Editar */}
+        <Button 
+            variant="secondary" 
+            size="icon" 
+            onClick={() => setOpenDelete(true)}
+            title="Excluir Usuário"
+            className="h-8 w-8"
+        >
+            <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Modal Editar (Mesma lógica) */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent>
           <DialogHeader>
@@ -180,7 +173,7 @@ function CellAction({ usuario }: { usuario: Usuario }) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Deletar */}
+      {/* Modal Deletar (Mesma lógica) */}
       <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

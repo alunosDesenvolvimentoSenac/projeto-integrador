@@ -96,7 +96,11 @@ const DATA_MENU = {
         {
           title: "Cadastrar Salas",
           url: "/cadastroSalas",
-        },        
+        },     
+        {
+          title: "Consultar Salas",
+          url: "/cadastroSalas/exibirSalas",
+        },      
       ],
     },
     {
@@ -107,7 +111,11 @@ const DATA_MENU = {
         {
           title: "Cadastrar Unidades",
           url: "/cadastroUnidade",
-        },        
+        },  
+         {
+          title: "Consultar Unidades",
+          url: "/cadastroUnidade/exibirUnidade",
+        },      
       ],
     }, 
     {
@@ -118,7 +126,11 @@ const DATA_MENU = {
         {
           title: "Cadastrar Perfis",
           url: "/cadastroPerfis",
-        },        
+        },   
+        {
+          title: "Cadastrar Perfis",
+          url: "/cadastroPerfis/exibirPerfis",
+        },      
       ],
     },           
     {
@@ -129,7 +141,11 @@ const DATA_MENU = {
         {
           title: "Cadastrar Equipamentos",
           url: "/cadastroEquipamentos",
-        },        
+        },  
+        {
+          title: "Cadastrar Equipamentos",
+          url: "/exibirEquipamentos",
+        },       
       ],
     },     
   ],
