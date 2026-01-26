@@ -5,9 +5,10 @@ import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, 
   CheckCircle2, AlertCircle, Plus, FlaskConical, ListChecks, 
   Loader2, X, Check, Lock, CalendarDays, Layers, ListFilter,
-  SunMedium
+  SunMedium, FileWarning 
 } from "lucide-react"
 
+import { useRouter } from "next/navigation" 
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 import { getDadosUsuarioSidebar } from "@/app/actions/auth"
@@ -21,6 +22,9 @@ import {
   approveSerieAction, 
   getSalasAction 
 } from "@/app/actions/agendamentos"
+
+// Importar a action de relatórios pendentes
+import { getRelatoriosPendentesAction } from "@/app/actions/checklist"
 
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -76,12 +80,14 @@ interface Agendamento {
 interface Sala { id: number; nome: string; codigo?: string; }
 
 export default function DashboardView() {
+  const router = useRouter()
   const today = new Date();
   today.setHours(0, 0, 0, 0); 
 
   const [date, setDate] = React.useState(new Date()) 
   const [agendamentos, setAgendamentos] = React.useState<Agendamento[]>([])
   const [laboratorios, setLaboratorios] = React.useState<Sala[]>([]) 
+  const [relatoriosPendentes, setRelatoriosPendentes] = React.useState<any[]>([]) 
   const [isLoading, setIsLoading] = React.useState(true)
   const [currentUser, setCurrentUser] = React.useState<Usuario | null>(null)
 
@@ -94,7 +100,7 @@ export default function DashboardView() {
   const [selectedDayDetails, setSelectedDayDetails] = React.useState<{ day: number, month: number, year: number, appointments: Agendamento[] } | null>(null)
   const [isFormOpen, setIsFormOpen] = React.useState(false)
   const [isRangeMode, setIsRangeMode] = React.useState(false) 
-   
+    
   const [formInitialDate, setFormInitialDate] = React.useState<{
     day: number, month: number, year: number, periodoPre?: Periodo, labIdPre?: string 
   } | null>(null)
@@ -135,13 +141,15 @@ export default function DashboardView() {
   const fetchData = React.useCallback(async () => {
     setIsLoading(true)
     try {
-      const [dadosAgendamentos, dadosSalas] = await Promise.all([
+      const [dadosAgendamentos, dadosSalas, dadosRelatorios] = await Promise.all([
         getAgendamentosAction(),
-        getSalasAction()
+        getSalasAction(),
+        getRelatoriosPendentesAction() 
       ]);
       
       setAgendamentos(dadosAgendamentos as unknown as Agendamento[])
       setLaboratorios(dadosSalas)
+      setRelatoriosPendentes(dadosRelatorios)
     } catch (error) {
       console.error(error)
       toast.error("Erro ao carregar dados.")
@@ -183,6 +191,15 @@ export default function DashboardView() {
   }
 
   const handleOpenAddForm = (periodo?: Periodo, enableRange: boolean = false) => {
+    if (!currentUser || !currentUser.id) return;
+
+    const usuarioTemPendencia = relatoriosPendentes.some(r => r.idUsuario === currentUser.id);
+
+    if (usuarioTemPendencia) {
+        router.push("/checklist");
+        return;
+    }
+
     if (!validateLabSelection()) return;
 
     let targetDay = today.getDate();
@@ -381,22 +398,17 @@ export default function DashboardView() {
         </header>
 
         <div className="flex flex-1 flex-col p-3 md:p-6">
-<<<<<<< HEAD
-          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4">
-             <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm h-10 w-full sm:w-[320px] px-1 gap-2">
-=======
-          {/* HEADER CONTROLS */}
+          
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4 shrink-0">
-             
-             {/* DATA E NAVEGAÇÃO (Fixo à esquerda ou topo em mobile) */}
+              
+             {/* DATA E NAVEGAÇÃO */}
             <div className="flex items-center justify-between bg-white dark:bg-zinc-900 rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm h-9 w-full sm:w-[320px] px-1 gap-2">
->>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
                 <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
 
                 <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
-                   {monthName}
+                    {monthName}
                 </span>
 
                 <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8 hover:bg-zinc-100 dark:hover:bg-zinc-800">
@@ -404,9 +416,11 @@ export default function DashboardView() {
                 </Button>
              </div>
 
-<<<<<<< HEAD
-             <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto ml-auto">
-                <div className="relative w-full sm:w-[320px]">
+             {/* FILTROS E BOTÃO */}
+             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full xl:w-auto ml-auto">
+                
+                {/* SELECT LABORATÓRIO */}
+                <div className="relative w-full sm:flex-1 min-w-[200px] xl:w-[280px]">
                     <Select 
                         value={selectedLab} 
                         onValueChange={(val) => {
@@ -416,22 +430,12 @@ export default function DashboardView() {
                     >
                         <SelectTrigger 
                             className={cn(
-                                "h-10 bg-white dark:bg-zinc-900 shadow-sm w-full font-normal transition-all duration-300",
+                                "h-9 bg-white dark:bg-zinc-900 shadow-sm w-full font-normal transition-all duration-300",
                                 isLabError 
                                     ? "border-red-500 ring-2 ring-red-200 dark:ring-red-900 animate-in fade-in zoom-in-95" 
                                     : "border-zinc-300 dark:border-zinc-700"
                             )}
                         >
-=======
-
-             {/* FILTROS E BOTÃO (Com flex-wrap para quebrar linha se necessário) */}
-             <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full xl:w-auto ml-auto">
-                
-                {/* SELECT LABORATÓRIO (Flexível: ocupa espaço disponível) */}
-                <div className="relative w-full sm:flex-1 min-w-[200px] xl:w-[280px]">
-                    <Select value={selectedLab} onValueChange={setSelectedLab}>
-                        <SelectTrigger className="h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 shadow-sm w-full ">
->>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
                           <div className="flex items-center gap-2 truncate">
                               <div className="bg-primary/10 p-1 rounded-md shrink-0"><FlaskConical className="h-3 w-3 text-primary" /></div>
                               <SelectValue placeholder="Laboratório" />
@@ -484,16 +488,14 @@ export default function DashboardView() {
                     </Select>
                 </div>
 
-                {/* BOTÃO AGENDAR (Fixo, mas flexível se precisar) */}
+                {/* BOTÃO AGENDAR */}
                 <Button className="h-9 px-4 font-medium shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto  bg-primary hover:bg-primary/90" onClick={() => handleOpenAddForm(undefined, true)}>
                     <Plus className="mr-2 h-4 w-4" /> Agendar Período
                 </Button>
              </div>
           </div>
-<<<<<<< HEAD
-=======
+
           {/* LEGENDA */}
->>>>>>> df897e404b85e7dc5c3a7e6443c02281a1a65aff
           <div className="flex flex-wrap items-center gap-6 mb-4 px-2 py-2 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-lg border border-zinc-100 dark:border-zinc-800 shrink-0">
              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-auto md:mr-0">Legenda</div>
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Manhã</span></div>
@@ -506,6 +508,7 @@ export default function DashboardView() {
              
              <div className="flex items-center gap-2 ml-auto"><span className="h-3 w-3 rounded-[2px] bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50"></span><span className="text-xs font-medium text-muted-foreground">Fim de Semana</span></div>
           </div>
+
           <div className="bg-white dark:bg-zinc-900 border rounded-xl shadow-sm flex flex-col">
              <div className="grid grid-cols-7 border-b bg-zinc-50/80 dark:bg-zinc-900/50">
                 {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((d) => (
@@ -740,8 +743,8 @@ function DayDetailsDialog({ isOpen, onClose, data, monthName, onAddClick, onDele
                                 </div>
                                 {agendamento && isAdmin && (
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {agendamento.status === 'pendente' && <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50" onClick={() => handleInitialAction('approve', agendamento)}><Check className="h-4 w-4" /></Button>}
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:bg-red-50" onClick={() => handleInitialAction('delete', agendamento)}><X className="h-4 w-4" /></Button>
+                                                {agendamento.status === 'pendente' && <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-50" onClick={() => handleInitialAction('approve', agendamento)}><Check className="h-4 w-4" /></Button>}
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:bg-red-50" onClick={() => handleInitialAction('delete', agendamento)}><X className="h-4 w-4" /></Button>
                                     </div>
                                 )}
                             </div>

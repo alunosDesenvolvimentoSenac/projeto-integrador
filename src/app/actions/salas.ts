@@ -1,30 +1,34 @@
 "use server"
 
-import { db } from "@/db";
-import { salas } from "@/db/migrations/schema"; 
+import { db } from "@/db"; // Certifique-se que seu 'db' é inicializado com { schema }
+import { salas, equipamentos } from "@/db/migrations/schema"; // Ajuste o caminho se necessário
 import { asc, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getSalasAction(term?: string) {
   try {
-    let query = db.select().from(salas).$dynamic(); 
+    // Usamos 'db.query' (Relational Query API) para facilitar trazer dados aninhados
+    const data = await db.query.salas.findMany({
+      // AQUI A MÁGICA: Traz os equipamentos vinculados automaticamente
+      with: {
+        equipamentos: true, 
+      },
+      // Filtro de busca
+      where: term ? (salas, { or, ilike }) => or(
+          ilike(salas.descricaoSala, `%${term}%`),
+          ilike(salas.codigoSala, `%${term}%`)
+      ) : undefined,
+      // Ordenação
+      orderBy: (salas, { asc }) => [asc(salas.descricaoSala)],
+    });
 
-    if (term) {
-      query = query.where(
-        or(
-          ilike(salas.descricaoSala, `%${term}%`), 
-          ilike(salas.codigoSala, `%${term}%`)     
-        )
-      );
-    }
-
-    const data = await query.orderBy(asc(salas.descricaoSala));
-
+    // Mapeamos para o formato que o frontend espera
     return data.map(sala => ({
       id: sala.idSala,
       nome: sala.descricaoSala,
       codigo: sala.codigoSala,
-      capacidade: sala.capacidade 
+      capacidade: sala.capacidade,
+      equipamentos: sala.equipamentos // Agora isso existe e é um array
     }));
   } catch (error) {
     console.error("Erro ao buscar salas:", error);
@@ -57,6 +61,7 @@ export async function deleteSalaAction(id: number) {
     revalidatePath("/dashboard/salas");
     return { success: true };
   } catch (error) {
-    return { success: false, error: "Não foi possível excluir. Verifique se há agendamentos vinculados." };
+    console.error("Erro delete sala:", error);
+    return { success: false, error: "Não foi possível excluir. Verifique se há agendamentos ou equipamentos vinculados." };
   }
 }
