@@ -1,5 +1,6 @@
 "use client"
 
+import senaclogomenu from "@/app/assets/senaclogo.svg"
 import * as React from "react"
 import {
   CalendarCheck,
@@ -11,6 +12,7 @@ import {
   LayoutGrid,
   UserStar
 } from "lucide-react"
+import Image from "next/image"
 
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
@@ -115,6 +117,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     name: "Usuário", 
     email: "",
     avatar: "",
+    role: ""
   })
 
   React.useEffect(() => {
@@ -129,6 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             name: infoBanco.nomeUsuario,
             email: user.email || "",
             avatar: "",
+            role: infoBanco.cargo || "Usuário"
           })
 
           if (infoBanco.cargo === "Administrador") {
@@ -162,7 +166,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher /> 
+        <div className="flex h-12 items-center justify-center py-2 group-data-[collapsible=icon]:p-0">
+            
+            <div className="relative h-8 w-full px-2 group-data-[collapsible=icon]:hidden">
+                 <Image 
+                    src={senaclogomenu} 
+                    alt="Logo Senac Completa" 
+                    height={120}
+                    width={120}
+                    className="object-contain object-left" 
+                    priority
+                 />
+            </div>
+
+            <div className="hidden group-data-[collapsible=icon]:block relative h-8 w-8">
+                 <Image 
+                    src="/logo1.png" 
+                    alt="Logo Senac Ícone" 
+                    fill 
+                    className="object-contain" 
+                 />
+            </div>
+
+        </div>
       </SidebarHeader>
       
       <SidebarContent className="overflow-x-hidden">
