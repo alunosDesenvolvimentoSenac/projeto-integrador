@@ -1,5 +1,5 @@
 
-import senaclogin from "@/app/assets/loginsenac.jpg"
+import senacfoto from "@/app/assets/senacfoto.png"
 import senaclogo from "@/app/assets/senaclogo.svg"
 import { LoginForm } from "@/components/login-form"
 import Image from "next/image"
@@ -27,12 +27,12 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <Image src={senaclogin}
-          alt="Login Image"
-          fill
-          className="object-cover" >
- 
-        </Image>
+        <Image
+            src={senacfoto}
+            alt="Login Image"
+            fill
+            className="object-cover object-[10%_center]" 
+          />
       </div>
     </div>
   )
