@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+
+import { useEffect, useState } from "react"
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, 
   CheckCircle2, AlertCircle, Plus, FlaskConical, ListChecks, 
@@ -174,7 +176,7 @@ export default function DashboardView() {
   const validateLabSelection = () => {
     if (!selectedLab || selectedLab === "0") {
         setIsLabError(true);
-        toast.error("Selecione um laboratório", { 
+        toast.error("Selecione uma sala", { 
             description: "É necessário escolher uma sala para visualizar a agenda.",
             duration: 4000,
             icon: <FlaskConical className="h-5 w-5 text-red-500" />
@@ -195,7 +197,7 @@ export default function DashboardView() {
     now.setHours(0,0,0,0); 
 
     if (clickedDate < now && !isAdmin) {
-        toast.error("Data Retroativa", { description: "Não é possível agendar no passado.", icon: <Lock className="h-4 w-4 text-red-500"/> })
+        toast.error("Data Retroativa", { description: "Não é possível agendar Data Retroativa.", icon: <Lock className="h-4 w-4 text-red-500"/> })
         return;
     }
 
@@ -380,9 +382,12 @@ export default function DashboardView() {
     return filtered.sort((a, b) => order[a.periodo] - order[b.periodo]);
   }
 
+ 
+ 
+
   // --- UI RENDER ---
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset className="bg-[#F8F9FA] dark:bg-zinc-950 flex flex-col flex-1 h-full overflow-hidden">
         
@@ -564,7 +569,7 @@ export default function DashboardView() {
         <AppointmentFormDialog isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} formData={formInitialDate} onSave={handleSaveAppointment} laboratorios={laboratorios} currentUser={currentUser} isRangeMode={isRangeMode} />
         
       </SidebarInset>
-      <Toaster richColors position="bottom-right" className="z-[99999]" />
+      <Toaster richColors position="bottom-right" className="z-99999" />
     </SidebarProvider>
   )
 }
@@ -800,7 +805,36 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
     const [endDate, setEndDate] = React.useState<Date | undefined>(undefined)
     const [selectedPeriodos, setSelectedPeriodos] = React.useState<Periodo[]>([])
     const today = new Date(); today.setHours(0,0,0,0);
-  
+    
+    
+    // Estado para armazenar o nome do usuário logado
+  const [nomeSolicitante, setNomeSolicitante] = useState("Carregando...")
+
+  // Busca o usuário assim que a tela abre
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Busca os dados detalhados no banco (para pegar o nome correto)
+          const dados = await getDadosUsuarioSidebar(user.uid)
+          
+          if (dados && dados.nomeUsuario) {
+            setNomeSolicitante(dados.nomeUsuario)
+          } else {
+            // Se não achar no banco, usa o do Google/Email
+            setNomeSolicitante(user.displayName || user.email || "Usuário")
+          }
+        } catch (error) {
+          console.error("Erro ao buscar usuário:", error)
+        }
+      } else {
+        setNomeSolicitante("")
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
+
     React.useEffect(() => {
         if(isOpen && formData) {
             setDisciplina("")
@@ -877,9 +911,9 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                       </div>
                 </div>
              ) : (
-                <div className="flex flex-col gap-2">
-                    <Label className="text-xs text-muted-foreground uppercase font-semibold">Data do Agendamento</Label>
-                    <div className="flex items-center justify-center p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-md border text-sm font-medium w-full text-zinc-600 dark:text-zinc-400 cursor-not-allowed"><CalendarDays className="mr-2 h-4 w-4 opacity-50"/>{formData.day}/{formData.month + 1}/{formData.year}</div>
+                <div className="flex items-center justify-center p-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-md border text-sm font-medium w-full text-zinc-600 dark:text-zinc-400 cursor-not-allowed">
+                    <CalendarDays className="mr-2 h-4 w-4 opacity-50"/>
+                    {String(formData.day).padStart(2, '0')}/{String(formData.month + 1).padStart(2, '0')}/{formData.year}
                 </div>
              )}
              <div className="flex flex-col gap-2">
@@ -897,11 +931,11 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
              </div>
              <Separator className="my-2"/>
              <div className="grid gap-2">
-                <Label htmlFor="docente">Nome do Docente</Label>
-                <div className="relative"><Input id="docente" value={currentUser?.nome || ""} readOnly className="bg-muted text-muted-foreground cursor-not-allowed border-dashed focus-visible:ring-0 pl-3 pr-20" tabIndex={-1} required /><div className="absolute inset-y-0 right-3 flex items-center pointer-events-none"><span className="text-xs text-muted-foreground bg-background px-1 border rounded shadow-sm">Seu nome</span></div></div>
+                <Label htmlFor="docente">Solicitante</Label>
+                <div className="relative"><Input id="docente" value={nomeSolicitante} readOnly className="bg-muted text-muted-foreground cursor-not-allowed border-dashed focus-visible:ring-0 pl-3 pr-20" tabIndex={-1} required /><div className="absolute inset-y-0 right-3 flex items-center pointer-events-none"><span className="text-xs text-muted-foreground bg-background px-1 border rounded shadow-sm">Seu nome</span></div></div>
              </div>
              <div className="grid gap-2 w-full">
-                <Label htmlFor="lab">Laboratório</Label>
+                <Label htmlFor="lab">Sala</Label>
                 <div className="relative">
                     <Select value={labId} onValueChange={setLabId} disabled>
                       <SelectTrigger className="w-full bg-muted text-muted-foreground opacity-100 cursor-not-allowed"><SelectValue placeholder="Laboratório" /></SelectTrigger>
@@ -909,8 +943,8 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                     </Select>
                 </div>
              </div>
-             <div className="grid gap-2"><Label htmlFor="disciplina">Disciplina / Curso <span className="text-xs font-normal text-muted-foreground ml-2">(Opcional)</span></Label><Input id="disciplina" placeholder="Ex: Algoritmos e Lógica" value={disciplina} onChange={(e) => setDisciplina(e.target.value)} /></div>
-             <div className="grid gap-2"><Label htmlFor="obs">Observação <span className="text-xs font-normal text-muted-foreground ml-2">(Opcional)</span></Label><textarea id="obs" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none" placeholder="Adicione observações..." value={observacao} onChange={(e) => setObservacao(e.target.value)} /></div>
+             <div className="grid gap-2"><Label htmlFor="disciplina">Turma <span className="text-xs font-normal text-muted-foreground ml-2"></span></Label><Input id="disciplina" placeholder="Ex: Algoritmos e Lógica" value={disciplina} onChange={(e) => setDisciplina(e.target.value)} /></div>
+             <div className="grid gap-2"><Label htmlFor="obs">Observação <span className="text-xs font-normal text-muted-foreground ml-2"></span></Label><textarea id="obs" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none" placeholder="Adicione observações..." value={observacao} onChange={(e) => setObservacao(e.target.value)} /></div>
              <div className="grid grid-cols-2 gap-4 pt-4"><Button type="button" variant="outline" onClick={onClose} className="w-full">Cancelar</Button><Button type="submit" className="w-full">Confirmar</Button></div>
           </form>
         </DialogContent>

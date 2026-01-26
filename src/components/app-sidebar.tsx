@@ -25,30 +25,19 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarSeparator, // 1. IMPORTAR O SEPARATOR
 } from "@/components/ui/sidebar"
 
-
-
-// 2. ADICIONE O ITEM NO MENU
 const DATA_MENU = {
-  teams: [
-    {
-    },
-  ],
+  teams: [],
   navMain: [
     {
       title: "Agendamento",
       url: "#",
       icon: CalendarCheck,
       items: [
-        {
-          title: "Agendar Laboratório",
-          url: "/dashboard",
-        },
-        {
-           title: "Minha Agenda",
-           url: "/agendamentosMeus",
-        },
+        { title: "Agendar Sala", url: "/dashboard" },
+        { title: "Minha Agenda", url: "/agendamentosMeus" },
       ],
     },
     {
@@ -56,21 +45,15 @@ const DATA_MENU = {
       url: "#",
       icon: Inbox,
       items: [
-        {
-          title: "Pendências",
-          url: "/solicitacoesAgendamentos",
-        },
+        { title: "Pendências", url: "/solicitacoesAgendamentos" },
       ],
     },
     {
-      title: "Relatórios",
+      title: "Checklists", // Alterei o título "Checklists" para "Relatórios" conforme seu código anterior parecia indicar
       url: "#",
       icon: FileChartColumn,
       items: [
-        {
-          title: "Histórico",
-          url: "/relatorios/historico",
-        },
+        { title: "Histórico", url: "/relatorios/historico" },
       ],
     },
     {
@@ -78,14 +61,8 @@ const DATA_MENU = {
       url: "#",
       icon: Users,
       items: [
-        {
-          title: "Cadastrar Usuarios",
-          url: "/cadastroUsuarios",
-        },
-        {
-          title: "Exibir Usuarios",
-          url: "/cadastroUsuarios/exibirUsuarios",
-        },
+        { title: "Cadastrar Usuarios", url: "/cadastroUsuarios" },
+        { title: "Exibir Usuarios", url: "/cadastroUsuarios/exibirUsuarios" },
       ],
     },
     {
@@ -93,14 +70,8 @@ const DATA_MENU = {
       url: "#",
       icon: LayoutGrid,
       items: [
-        {
-          title: "Cadastrar Salas",
-          url: "/cadastroSalas",
-        },     
-        {
-          title: "Consultar Salas",
-          url: "/cadastroSalas/exibirSalas",
-        },      
+        { title: "Cadastrar Salas", url: "/cadastroSalas" },
+        { title: "Consultar Salas", url: "/cadastroSalas/exibirSalas" },
       ],
     },
     {
@@ -108,58 +79,37 @@ const DATA_MENU = {
       url: "#",
       icon: Building,
       items: [
-        {
-          title: "Cadastrar Unidades",
-          url: "/cadastroUnidade",
-        },  
-         {
-          title: "Consultar Unidades",
-          url: "/cadastroUnidade/exibirUnidade",
-        },      
+        { title: "Cadastrar Unidades", url: "/cadastroUnidade" },
+        { title: "Consultar Unidades", url: "/cadastroUnidade/exibirUnidade" },
       ],
-    }, 
+    },
     {
       title: "Perfis",
       url: "#",
       icon: UserStar,
       items: [
-        {
-          title: "Cadastrar Perfis",
-          url: "/cadastroPerfis",
-        },   
-        {
-          title: "Cadastrar Perfis",
-          url: "/cadastroPerfis/exibirPerfis",
-        },      
+        { title: "Cadastrar Perfis", url: "/cadastroPerfis" },
+        { title: "Consultar Perfis", url: "/cadastroPerfis/exibirPerfis" },
       ],
-    },           
+    },
     {
       title: "Equipamentos",
       url: "#",
       icon: Monitor,
       items: [
-        {
-          title: "Cadastrar Equipamentos",
-          url: "/cadastroEquipamentos",
-        },  
-        {
-          title: "Cadastrar Equipamentos",
-          url: "/exibirEquipamentos",
-        },       
+        { title: "Cadastrar Equipamentos", url: "/cadastroEquipamentos" },
+        { title: "Consultar Equipamentos", url: "/exibirEquipamentos" },
       ],
-    },     
+    },
   ],
 }
 
-const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações", "Usuários", "Perfis", "Unidades", "Salas", "Equipamentos"];
+// Lista de itens que ficam na parte de baixo (CRUDs)
+const ADMIN_ONLY_MENUS = ["Usuários", "Perfis", "Unidades", "Salas", "Equipamentos", "Solicitações", "Cadastros"];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
-  // 3. ATUALIZE O FILTRO INICIAL
-  // Removemos tudo que estiver na lista ADMIN_ONLY_MENUS
-  const menuPadrao = DATA_MENU.navMain.filter(item => !ADMIN_ONLY_MENUS.includes(item.title))
-  
-  const [menuItems, setMenuItems] = React.useState(menuPadrao)
+  const [isAdmin, setIsAdmin] = React.useState(false)
   
   const [userData, setUserData] = React.useState({
     name: "Usuário", 
@@ -181,11 +131,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             avatar: "",
           })
 
-          // SE for Admin, mostramos o MENU COMPLETO (incluindo Solicitações e Cadastros)
           if (infoBanco.cargo === "Administrador") {
-            setMenuItems(DATA_MENU.navMain) 
+            setIsAdmin(true)
+          } else {
+            setIsAdmin(false)
           }
-          // Se não for admin, ele mantém o 'menuPadrao' que já filtramos lá em cima
         }
       }
     })
@@ -193,14 +143,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return () => unsubscribe()
   }, [])
 
+  // 2. LÓGICA DE SEPARAÇÃO DOS ITENS
+  const { menuGeral, menuAdmin } = React.useMemo(() => {
+    // Itens gerais (disponíveis para todos ou que não são CRUDs pesados)
+    // Filtramos: Itens que NÃO estão na lista ADMIN_ONLY_MENUS
+    const geral = DATA_MENU.navMain.filter(item => !ADMIN_ONLY_MENUS.includes(item.title));
+    
+    // Itens Admin (CRUDs)
+    // Se for admin, pega os itens que ESTÃO na lista. Se não for admin, array vazio.
+    const admin = isAdmin 
+      ? DATA_MENU.navMain.filter(item => ADMIN_ONLY_MENUS.includes(item.title)) 
+      : [];
+
+    return { menuGeral: geral, menuAdmin: admin }
+  }, [isAdmin])
+
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher /> 
       </SidebarHeader>
       
-      <SidebarContent>
-        <NavMain items={menuItems} />
+      <SidebarContent className="overflow-x-hidden">
+        {/* GRUPO 1: GERAL (Sempre aparece) */}
+        <NavMain items={menuGeral} label="Sistema de Agendamento" />
+
+        {/* SEPARADOR E GRUPO 2: ADMIN (Só aparece se tiver itens) */}
+        {menuAdmin.length > 0 && (
+          <>
+            
+            <NavMain items={menuAdmin} label="Gerenciamento" />
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

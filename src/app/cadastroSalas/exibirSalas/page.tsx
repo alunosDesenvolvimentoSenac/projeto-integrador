@@ -45,8 +45,8 @@ export default async function Page(props: { searchParams: SearchParams }) {
           </div>
         </header>
         
-        <div>
-          <div className="container mx-auto py-10 space-y-4">
+        <div className="flex-1">
+          <div className="container mx-auto py-6 px-4 md:py-10 space-y-4">
              {/* Controles: Filtros e Botão Nova Sala */}
              <SalaControls />
              

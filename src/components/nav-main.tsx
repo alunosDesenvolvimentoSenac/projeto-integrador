@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { ChevronRight, type LucideIcon } from "lucide-react"
+import Link from "next/link"
 
 import {
   Collapsible,
@@ -20,6 +22,7 @@ import {
 
 export function NavMain({
   items,
+  label = "Menu" // ADICIONADO: Propriedade label com valor padrão
 }: {
   items: {
     title: string
@@ -30,11 +33,23 @@ export function NavMain({
       title: string
       url: string
     }[]
-  }[]
+  }[],
+  label?: string // ADICIONADO: Tipagem
 }) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return null
+  }
+
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Sistema de Agendamentos</SidebarGroupLabel>
+      {/* ALTERADO: Usa a prop label */}
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible
@@ -56,9 +71,9 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        <Link href={subItem.url}>
                           <span>{subItem.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}
