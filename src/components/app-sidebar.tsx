@@ -11,7 +11,8 @@ import {
   Monitor,
   Building,
   LayoutGrid,
-  UserStar
+  UserStar,
+  Info // 1. Importe o ícone Info
 } from "lucide-react"
 import Image from "next/image"
 
@@ -21,14 +22,13 @@ import { getDadosUsuarioSidebar } from "@/app/actions/auth"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-  SidebarSeparator, // 1. IMPORTAR O SEPARATOR
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 
 const DATA_MENU = {
@@ -52,7 +52,7 @@ const DATA_MENU = {
       ],
     },
     {
-      title: "Checklists", // Alterei o título "Checklists" para "Relatórios" conforme seu código anterior parecia indicar
+      title: "Checklists",
       url: "#",
       icon: FileChartColumn,
       items: [
@@ -104,11 +104,21 @@ const DATA_MENU = {
         { title: "Consultar Equipamentos", url: "/cadastroEquipamentos/exibirEquipamentos" },
       ],
     },
+    // 2. Adicione o item "Sobre" aqui no DATA_MENU
+    {
+      title: "Sobre",
+      url: "#",
+      icon: Info,
+      items: [
+        { title: "Sobre o Projeto", url: "/sobre" },
+      ],
+    },
   ],
 }
 
-// Lista de itens que ficam na parte de baixo (CRUDs)
+// Listas de definição de grupos
 const ADMIN_ONLY_MENUS = ["Usuários", "Perfis", "Unidades", "Salas", "Equipamentos", "Solicitações", "Cadastros"];
+const INFO_MENUS = ["Sobre"]; // Novo grupo para informações
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
@@ -148,19 +158,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return () => unsubscribe()
   }, [])
 
-  // 2. LÓGICA DE SEPARAÇÃO DOS ITENS
-  const { menuGeral, menuAdmin } = React.useMemo(() => {
-    // Itens gerais (disponíveis para todos ou que não são CRUDs pesados)
-    // Filtramos: Itens que NÃO estão na lista ADMIN_ONLY_MENUS
-    const geral = DATA_MENU.navMain.filter(item => !ADMIN_ONLY_MENUS.includes(item.title));
+  // 3. ATUALIZADA A LÓGICA DE SEPARAÇÃO (AGORA COM 3 GRUPOS)
+  const { menuGeral, menuAdmin, menuInfo } = React.useMemo(() => {
+    // Grupo 1: Geral (Tudo que NÃO é Admin E NÃO é Info)
+    const geral = DATA_MENU.navMain.filter(item => 
+      !ADMIN_ONLY_MENUS.includes(item.title) && !INFO_MENUS.includes(item.title)
+    );
     
-    // Itens Admin (CRUDs)
-    // Se for admin, pega os itens que ESTÃO na lista. Se não for admin, array vazio.
+    // Grupo 2: Admin (Apenas se for admin)
     const admin = isAdmin 
       ? DATA_MENU.navMain.filter(item => ADMIN_ONLY_MENUS.includes(item.title)) 
       : [];
 
-    return { menuGeral: geral, menuAdmin: admin }
+    // Grupo 3: Informações (Sempre visível, itens da lista INFO_MENUS)
+    const info = DATA_MENU.navMain.filter(item => INFO_MENUS.includes(item.title));
+
+    return { menuGeral: geral, menuAdmin: admin, menuInfo: info }
   }, [isAdmin])
 
 
@@ -168,7 +181,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex h-12 items-center justify-center py-2 group-data-[collapsible=icon]:p-0">
-            
             <div className="relative h-8 w-full px-2 group-data-[collapsible=icon]:hidden">
                  <Image 
                     src={senaclogomenu} 
@@ -179,7 +191,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     priority
                  />
             </div>
-
             <div className="hidden group-data-[collapsible=icon]:block relative h-8 w-8">
                  <Image 
                     src={sidebarlogo} 
@@ -188,21 +199,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="object-contain" 
                  />
             </div>
-
         </div>
       </SidebarHeader>
       
       <SidebarContent className="overflow-x-hidden">
-        {/* GRUPO 1: GERAL (Sempre aparece) */}
+        {/* GRUPO 1: GERAL */}
         <NavMain items={menuGeral} label="Sistema de Agendamento" />
 
-        {/* SEPARADOR E GRUPO 2: ADMIN (Só aparece se tiver itens) */}
+        {/* GRUPO 2: ADMIN (Se houver) */}
         {menuAdmin.length > 0 && (
           <>
             
             <NavMain items={menuAdmin} label="Gerenciamento" />
           </>
         )}
+
+        {/* GRUPO 3: INFORMAÇÕES (Novo Grupo) */}
+        {menuInfo.length > 0 && (
+          <>
+             
+             <NavMain items={menuInfo} label="Informações" />
+          </>
+        )}
+
       </SidebarContent>
 
       <SidebarFooter>
