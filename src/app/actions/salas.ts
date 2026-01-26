@@ -1,41 +1,51 @@
 "use server"
 
-import { db } from "@/db"; // Certifique-se que seu 'db' é inicializado com { schema }
-import { salas, equipamentos } from "@/db/migrations/schema"; // Ajuste o caminho se necessário
+import { db } from "@/db";
+import { salas, equipamentos } from "@/db/migrations/schema"; 
 import { asc, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+// --- BUSCAR SALAS ---
 export async function getSalasAction(term?: string) {
   try {
-    // Usamos 'db.query' (Relational Query API) para facilitar trazer dados aninhados
-    const data = await db.query.salas.findMany({
-      // AQUI A MÁGICA: Traz os equipamentos vinculados automaticamente
-      with: {
-        equipamentos: true, 
-      },
-      // Filtro de busca
-      where: term ? (salas, { or, ilike }) => or(
+    let query = db.select().from(salas);
+
+    if (term) {
+      query.where(
+        or(
           ilike(salas.descricaoSala, `%${term}%`),
           ilike(salas.codigoSala, `%${term}%`)
-      ) : undefined,
-      // Ordenação
-      orderBy: (salas, { asc }) => [asc(salas.descricaoSala)],
+        )
+      );
+    }
+
+    const salasResult = await query.orderBy(asc(salas.descricaoSala));
+    const equipamentosResult = await db.select().from(equipamentos);
+    const formatted = salasResult.map((sala) => {
+    const equipsDaSala = equipamentosResult.filter(e => e.idSala === sala.idSala);
+
+      return {
+        id: sala.idSala,
+        nome: sala.descricaoSala,
+        codigo: sala.codigoSala,
+        capacidade: sala.capacidade,
+        equipamentos: equipsDaSala.map(e => ({
+          idEquipamento: e.idEquipamento,
+          descricao: e.descricao,
+          quantidade: e.quantidade,
+          ativo: e.ativo
+        }))
+      };
     });
 
-    // Mapeamos para o formato que o frontend espera
-    return data.map(sala => ({
-      id: sala.idSala,
-      nome: sala.descricaoSala,
-      codigo: sala.codigoSala,
-      capacidade: sala.capacidade,
-      equipamentos: sala.equipamentos // Agora isso existe e é um array
-    }));
+    return formatted;
   } catch (error) {
     console.error("Erro ao buscar salas:", error);
     return [];
   }
 }
 
+// --- ATUALIZAR SALA ---
 export async function updateSalaAction(id: number, data: { nome: string; codigo: string; capacidade: number }) {
   try {
     await db
@@ -58,10 +68,16 @@ export async function updateSalaAction(id: number, data: { nome: string; codigo:
 export async function deleteSalaAction(id: number) {
   try {
     await db.delete(salas).where(eq(salas.idSala, id));
+    
     revalidatePath("/dashboard/salas");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro delete sala:", error);
-    return { success: false, error: "Não foi possível excluir. Verifique se há agendamentos ou equipamentos vinculados." };
+    
+    if (error.code === '23503') {
+        return { success: false, error: "Não é possível excluir: existem equipamentos ou agendamentos vinculados a esta sala." };
+    }
+
+    return { success: false, error: "Erro ao excluir sala." };
   }
 }
