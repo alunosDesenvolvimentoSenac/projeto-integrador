@@ -1,6 +1,7 @@
 "use client"
 
 import senaclogomenu from "@/app/assets/senaclogo.svg"
+import sidebarlogo from "@/app/assets/sidebarlogo.svg"
 import * as React from "react"
 import {
   CalendarCheck,
@@ -181,7 +182,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             <div className="hidden group-data-[collapsible=icon]:block relative h-8 w-8">
                  <Image 
-                    src="/logo1.png" 
+                    src={sidebarlogo} 
                     alt="Logo Senac Ícone" 
                     fill 
                     className="object-contain" 
