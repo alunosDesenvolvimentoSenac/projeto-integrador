@@ -178,6 +178,7 @@ export default function DashboardView() {
         setIsLabError(true);
         toast.error("Selecione uma sala", { 
             description: "É necessário escolher uma sala para visualizar a agenda.",
+            id: "erro-selecione-uma-sala" ,
             duration: 4000,
             icon: <FlaskConical className="h-5 w-5 text-red-500" />
         });
@@ -186,18 +187,23 @@ export default function DashboardView() {
     return true;
   }
 
-  const handleDayClick = (day: number, month: number, isCurrentMonth: boolean) => {
+ const handleDayClick = (day: number, month: number, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return;
     if (!validateLabSelection()) return;
 
     const year = date.getFullYear()
-    const isAdmin = currentUser?.role === "ADMIN"
+    // const isAdmin = currentUser?.role === "ADMIN" // Essa linha não é mais necessária para o bloqueio, mas pode manter se usar em outro lugar
     const clickedDate = new Date(year, month, day);
     const now = new Date();
     now.setHours(0,0,0,0); 
 
-    if (clickedDate < now && !isAdmin) {
-        toast.error("Data Retroativa", { description: "Não é possível agendar Data Retroativa.", icon: <Lock className="h-4 w-4 text-red-500"/> })
+    
+    if (clickedDate < now) {
+        toast.error("Data Retroativa", { 
+            description: "Não é possível agendar Data Retroativa.", 
+            icon: <Lock className="h-4 w-4 text-red-500"/>,
+            id: "erro-data-retroativa" // <--- ADICIONE ESTA LINHA (pode ser qualquer string única)
+        })
         return;
     }
 
@@ -399,7 +405,7 @@ export default function DashboardView() {
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block"><BreadcrumbLink href="#">Agendamento</BreadcrumbLink></BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem><BreadcrumbPage>Visão Geral</BreadcrumbPage></BreadcrumbItem>
+                <BreadcrumbItem><BreadcrumbPage>Agendar Sala</BreadcrumbPage></BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
