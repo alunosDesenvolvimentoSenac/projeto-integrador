@@ -196,7 +196,7 @@ export default function DashboardView() {
     const usuarioTemPendencia = relatoriosPendentes.some(r => r.idUsuario === currentUser.id);
 
     if (usuarioTemPendencia) {
-        router.push("/checklist");
+        router.push("/agendamentosMeus");
         return;
     }
 

@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams, useRouter } from "next/navigation" 
-import { 
-  getRelatoriosPendentesAction, 
-  getEquipamentosDaSalaAction, 
-  salvarChecklistAction, 
+import { useSearchParams, useRouter } from "next/navigation"
+import {
+  getRelatoriosPendentesAction,
+  getEquipamentosDaSalaAction,
+  salvarChecklistAction,
   getHistoricoChecklistsAction,
   getSalasOptionsAction,
   getDetalhesDoChecklistAction
@@ -14,11 +14,10 @@ import { ChecklistForm } from "@/components/formularioChecklist"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { 
-  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator 
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator
 } from "@/components/ui/breadcrumb"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,10 +25,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
-import { 
-  ClipboardList, History, CheckCircle2, XCircle, Calendar, User, MapPin, Search, 
-  Play, RefreshCcw, X, ChevronDown, Package, AlertTriangle, ImageIcon, FileWarning,
-  Layers, CalendarDays
+import {
+  ClipboardList, History, CheckCircle2, XCircle, Calendar, User, Search,
+  RefreshCcw, X, ChevronDown, Package, AlertTriangle, ImageIcon, FileWarning,
+  Layers, Brush, Box
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -43,11 +42,11 @@ export default function RelatoriosPage() {
   const [pendentes, setPendentes] = React.useState<any[]>([])
   const [historico, setHistorico] = React.useState<any[]>([])
   const [salasOptions, setSalasOptions] = React.useState<any[]>([])
-  
+
   const [selected, setSelected] = React.useState<any>(null)
   const [viewReport, setViewReport] = React.useState<any>(null)
   const [equipamentos, setEquipamentos] = React.useState([])
-  
+
   const [loading, setLoading] = React.useState(false)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
 
@@ -56,78 +55,76 @@ export default function RelatoriosPage() {
   const [filterStatus, setFilterStatus] = React.useState("todos")
   const [filterDate, setFilterDate] = React.useState<Date | undefined>(undefined)
 
-  // --- 1. AGRUPAMENTO DE PENDÊNCIAS ---
   const pendentesAgrupados = React.useMemo(() => {
     const grouped: any[] = [];
     const map = new Map();
 
     pendentes.forEach(item => {
-        if (item.groupId) {
-            if (!map.has(item.groupId)) {
-                const groupItem = { 
-                    ...item, 
-                    isSeries: true,
-                    dates: [new Date(item.inicio)],
-                    count: 1
-                };
-                map.set(item.groupId, groupItem);
-                grouped.push(groupItem);
-            } else {
-                const group = map.get(item.groupId);
-                group.dates.push(new Date(item.inicio));
-                group.count += 1;
-            }
+      if (item.groupId) {
+        if (!map.has(item.groupId)) {
+          const groupItem = {
+            ...item,
+            isSeries: true,
+            dates: [new Date(item.inicio)],
+            count: 1
+          };
+          map.set(item.groupId, groupItem);
+          grouped.push(groupItem);
         } else {
-            grouped.push({ ...item, isSeries: false });
+          const group = map.get(item.groupId);
+          group.dates.push(new Date(item.inicio));
+          group.count += 1;
         }
+      } else {
+        grouped.push({ ...item, isSeries: false });
+      }
     });
 
     grouped.forEach(g => {
-        if (g.isSeries && g.dates) {
-            g.dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
-            g.dateStart = g.dates[0];
-            g.dateEnd = g.dates[g.dates.length - 1];
-        }
+      if (g.isSeries && g.dates) {
+        g.dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
+        g.dateStart = g.dates[0];
+        g.dateEnd = g.dates[g.dates.length - 1];
+      }
     });
 
     return grouped;
   }, [pendentes]);
 
-  // --- 2. AGRUPAMENTO DE HISTÓRICO (CORRIGIDO) ---
   const historicoAgrupado = React.useMemo(() => {
-    const grouped: any[] = [];
-    const map = new Map();
+  const grouped: any[] = [];
+  const map = new Map();
 
     historico.forEach(item => {
-        if (item.groupId) {
-            if (!map.has(item.groupId)) {
-                const dataReferencia = item.inicio ? new Date(item.inicio) : new Date(item.data);
-                
-                const groupItem = { 
-                    ...item, 
-                    isSeries: true,
-                    dates: [dataReferencia],
-                    count: 1
-                };
-                map.set(item.groupId, groupItem);
-                grouped.push(groupItem);
-            } else {
-                const group = map.get(item.groupId);
-                const dataReferencia = item.inicio ? new Date(item.inicio) : new Date(item.data);
-                group.dates.push(dataReferencia);
-                group.count += 1;
-            }
+      if (item.groupId) {
+        if (!map.has(item.groupId)) {
+          const dataReferencia = item.inicio ? new Date(item.inicio) : new Date(item.data);
+
+          const groupItem = {
+            ...item,
+            isSeries: true,
+            dates: [dataReferencia],
+            count: 1
+          };
+          map.set(item.groupId, groupItem);
+          grouped.push(groupItem);
         } else {
-            grouped.push({ ...item, isSeries: false });
+          const group = map.get(item.groupId);
+          const dataReferencia = item.inicio ? new Date(item.inicio) : new Date(item.data);
+          group.dates.push(dataReferencia);
+          group.count += 1;
         }
+      } else {
+        grouped.push({ ...item, isSeries: false });
+      }
     });
 
     grouped.forEach(g => {
-        if (g.isSeries && g.dates) {
-            g.dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
-            g.dateStart = g.dates[0];
-            g.dateEnd = g.dates[g.dates.length - 1];
-        }
+      if (g.isSeries && g.dates) {
+        g.dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
+        g.dateStart = g.dates[0];
+        g.dateEnd = g.dates[g.dates.length - 1];
+      }
     });
 
     return grouped;
@@ -148,12 +145,12 @@ export default function RelatoriosPage() {
 
   React.useEffect(() => {
     if (!isRefreshing && pendentes.length > 0 && searchParams.get("error") !== "bloqueado") {
-        toast.warning("Pendências Encontradas", {
-            id: "aviso-pendencia", 
-            description: `Você possui conferências aguardando finalização.`,
-            duration: 5000,
-            icon: <AlertTriangle className="h-5 w-5 text-amber-500" />
-        })
+      toast.warning("Pendências Encontradas", {
+        id: "aviso-pendencia",
+        description: `Você possui conferências aguardando finalização.`,
+        duration: 5000,
+        icon: <AlertTriangle className="h-5 w-5 text-amber-500" />
+      })
     }
   }, [pendentes, isRefreshing, searchParams])
 
@@ -185,15 +182,15 @@ export default function RelatoriosPage() {
     }
   }, [filterSearch, filterSala, filterStatus, filterDate])
 
-  React.useEffect(() => { 
+  React.useEffect(() => {
     const timeout = setTimeout(() => {
-        loadData() 
+      loadData()
     }, 300)
     return () => clearTimeout(timeout)
   }, [loadData])
 
   const handleOpenForm = async (item: any) => {
-    if(loading) return;
+    if (loading) return;
     const toastId = toast.loading("Buscando equipamentos...")
     setLoading(true)
     try {
@@ -209,15 +206,17 @@ export default function RelatoriosPage() {
   }
 
   const handleOpenDetails = async (historicoItem: any) => {
-    if(loading) return;
+    if (loading) return;
     const toastId = toast.loading("Carregando detalhes...")
     setLoading(true)
     try {
-      const detalhes = await getDetalhesDoChecklistAction(historicoItem.idChecklist)
+      const detalhes: any = await getDetalhesDoChecklistAction(historicoItem.idChecklist)
+      
       setViewReport({
         ...historicoItem,
         itens: detalhes.itens,
-        observacaoGeral: detalhes.observacaoGeral
+        observacaoGeral: detalhes.observacaoGeral,
+        limpezaOk: detalhes.limpezaOk ?? true
       })
       toast.dismiss(toastId)
     } catch (error) {
@@ -231,13 +230,16 @@ export default function RelatoriosPage() {
   const handleFinish = async (payload: any) => {
     if (loading) return
     setLoading(true)
-    const toastId = toast.loading("Salvando...") 
+    const toastId = toast.loading("Salvando...")
     try {
       const res = await salvarChecklistAction({
         idAgendamento: selected.id,
-        groupId: selected.isSeries ? selected.groupId : undefined, 
+        groupId: selected.isSeries ? selected.groupId : undefined,
         disciplina: selected.disciplina,
-        materialOk: payload.materialOk, 
+        
+        materialOk: payload.materialOk,
+        limpezaOk: payload.limpezaOk, 
+
         itens: payload.itens.map((it: any) => ({
           ...it,
           quantidadeCorreta: it.tudoOk
@@ -246,10 +248,10 @@ export default function RelatoriosPage() {
       })
 
       if (res.success) {
-        setSelected(null) 
-        setEquipamentos([]) 
+        setSelected(null)
+        setEquipamentos([])
         toast.success(selected.isSeries ? "Série finalizada com sucesso!" : "Checklist concluído!", { id: toastId })
-        loadData() 
+        loadData()
       } else {
         toast.error("Erro ao salvar: " + res.error, { id: toastId })
       }
@@ -259,9 +261,6 @@ export default function RelatoriosPage() {
       setLoading(false)
     }
   }
-
-  const proximoRelatorio = pendentesAgrupados.length > 0 ? pendentesAgrupados[0] : null
-  const outrosPendentes = Math.max(0, pendentesAgrupados.length - 1)
 
   const clearSearch = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setFilterSearch("") }
   const clearSala = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setFilterSala("all") }
@@ -291,243 +290,158 @@ export default function RelatoriosPage() {
         <div className="flex flex-1 flex-col gap-8 p-6 md:p-10 pt-8 max-w-6xl mx-auto w-full">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <ClipboardList className="text-primary h-8 w-8" /> 
+              <ClipboardList className="text-primary h-8 w-8" />
               Relatórios de Checklist
             </h1>
-            <p className="text-muted-foreground">
-              Realize a conferência e consulte o histórico de uso das salas.
-            </p>
           </div>
-
-          <section>
-            
-            {/* ALERTA VISUAL PULSANTE */}
-            {pendentes.length > 0 && (
-                <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-3 shadow-sm animate-pulse">
-                    <div className="p-2 bg-red-100 rounded-full shrink-0">
-                        <AlertTriangle className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-red-800">Atenção: Conferência de sala pendente</h4>
-                        <p className="text-xs text-red-700 font-medium">
-                            Complete o checklist abaixo para regularizar sua situação e liberar novos agendamentos.
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            <div className="flex items-center justify-between mb-4">
-               <h2 className="text-lg font-semibold flex items-center gap-2">
-                 <Play className="h-5 w-5 text-amber-500" />
-                 Fila de Verificação
-               </h2>
-               {outrosPendentes > 0 && (
-                 <span className="text-xs font-medium px-3 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200">
-                   +{outrosPendentes} aguardando
-                 </span>
-               )}
-            </div>
-
-            {proximoRelatorio ? (
-                <Card className="border-l-4 border-l-amber-500 shadow-md bg-gradient-to-r from-background to-amber-50/30 dark:to-amber-950/10">
-                    <CardHeader className="pb-2">
-                        <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
-                            <div>
-                                <CardTitle className="text-2xl font-black text-amber-600 flex items-center gap-2">
-                                    {proximoRelatorio.salaNome}
-                                    {proximoRelatorio.isSeries && (
-                                        <span className="text-xs font-medium px-2 py-0.5 bg-violet-100 text-violet-700 border border-violet-200 rounded-full flex items-center gap-1">
-                                            <Layers className="h-3 w-3" /> Série
-                                        </span>
-                                    )}
-                                </CardTitle>
-                                <p className="text-sm text-muted-foreground font-medium mt-1">
-                                    {proximoRelatorio.disciplina || "Uso Geral"}
-                                </p>
-                            </div>
-                            <Button onClick={() => handleOpenForm(proximoRelatorio)} size="lg" className="shadow-lg font-bold min-w-[200px]">
-                                {proximoRelatorio.isSeries ? "Iniciar Conferência em Série" : "Iniciar Conferência"}
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="grid md:grid-cols-3 gap-4 text-sm mt-4">
-                        <div className="flex items-center gap-3 bg-background/50 p-3 rounded-md border">
-                            <User className="h-4 w-4 text-zinc-600" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Responsável</span>
-                                <span className="font-medium truncate">{proximoRelatorio.docente}</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 bg-background/50 p-3 rounded-md border">
-                            <Calendar className="h-4 w-4 text-zinc-600" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Data</span>
-                                <span className="font-medium">
-                                    {proximoRelatorio.isSeries 
-                                        ? `${format(proximoRelatorio.dateStart, "dd/MM/yyyy")} a ${format(proximoRelatorio.dateEnd, "dd/MM/yyyy")}`
-                                        : new Date(proximoRelatorio.inicio).toLocaleDateString('pt-BR')
-                                    }
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 bg-background/50 p-3 rounded-md border">
-                            <MapPin className="h-4 w-4 text-zinc-600" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">ID</span>
-                                <span className="font-medium">
-                                    {proximoRelatorio.isSeries ? `Grupo #${proximoRelatorio.groupId}` : `#${proximoRelatorio.id}`}
-                                </span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-xl bg-muted/10">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500/30 mb-3" />
-                    <h3 className="text-lg font-medium">Tudo verificado!</h3>
-                    <p className="text-sm text-muted-foreground">Não há agendamentos aguardando.</p>
-                </div>
-            )}
-          </section>
 
           <Separator />
 
           <section className="space-y-4">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <History className="h-5 w-5 text-zinc-500" />
-                    Histórico de Relatórios
-                </h2>
-                {isRefreshing && <span className="text-xs flex items-center gap-1 text-muted-foreground animate-pulse"><RefreshCcw className="h-3 w-3 animate-spin" /> Atualizando...</span>}
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <History className="h-5 w-5 text-zinc-500" />
+                Histórico de Relatórios
+              </h2>
+              {isRefreshing && <span className="text-xs flex items-center gap-1 text-muted-foreground animate-pulse"><RefreshCcw className="h-3 w-3 animate-spin" /> Atualizando...</span>}
             </div>
 
             <div className="bg-background border rounded-xl shadow-sm overflow-hidden flex flex-col">
-                {/* FILTROS */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border-b bg-muted/30">
-                    <div className="md:col-span-5 relative group">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Buscar docente..." 
-                            className={cn("pl-9 pr-10 bg-background w-full transition-colors", filterSearch ? "text-foreground" : "text-muted-foreground placeholder:text-muted-foreground")}
-                            value={filterSearch}
-                            onChange={(e) => setFilterSearch(e.target.value)}
-                        />
-                        {filterSearch && (
-                            <button onClick={clearSearch} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors z-20 cursor-pointer">
-                                <X className="h-4 w-4" />
-                            </button>
-                        )}
-                    </div>
-                    <div className="md:col-span-3 relative">
-                        <Select value={filterSala} onValueChange={setFilterSala}>
-                            <SelectTrigger className={cn("bg-background w-full pr-10 [&>svg]:hidden", filterSala !== 'all' ? "text-foreground font-medium" : "text-muted-foreground")}>
-                                <SelectValue placeholder="Sala" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todas as salas</SelectItem>
-                                {salasOptions.map((s) => (<SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                        {filterSala !== "all" ? (
-                            <button onClick={clearSala} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
-                                <X className="h-4 w-4" />
-                            </button>
-                        ) : (
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
-                        )}
-                    </div>
-                    <div className="md:col-span-2 relative">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-full justify-between bg-background px-3 pr-10", !filterDate ? "text-muted-foreground" : "text-foreground font-medium")}>
-                                    <div className="flex items-center truncate">
-                                        <span className="truncate">{filterDate ? format(filterDate, "dd/MM/yyyy", { locale: ptBR }) : "Todas as datas"}</span>
-                                    </div>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <CalendarComponent mode="single" selected={filterDate} onSelect={setFilterDate} initialFocus />
-                            </PopoverContent>
-                        </Popover>
-                         {filterDate ? (
-                            <div role="button" onClick={clearDate} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
-                                <X className="h-4 w-4" />
-                            </div>
-                        ) : (
-                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
-                        )}
-                    </div>
-                    <div className="md:col-span-2 relative">
-                        <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className={cn("bg-background w-full pr-10 [&>svg]:hidden", filterStatus !== 'todos' ? "text-foreground font-medium" : "text-muted-foreground")}>
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos os tipos</SelectItem>
-                                <SelectItem value="ok">Sem Avarias</SelectItem>
-                                <SelectItem value="avaria">Com Avaria</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {filterStatus !== "todos" ? (
-                            <button onClick={clearStatus} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
-                                <X className="h-4 w-4" />
-                            </button>
-                        ) : (
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
-                        )}
-                    </div>
+              {/* FILTROS */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border-b bg-muted/30">
+                <div className="md:col-span-5 relative group">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar docente..."
+                    className={cn("pl-9 pr-10 bg-background w-full transition-colors", filterSearch ? "text-foreground" : "text-muted-foreground placeholder:text-muted-foreground")}
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                  />
+                  {filterSearch && (
+                    <button onClick={clearSearch} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors z-20 cursor-pointer">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
+                <div className="md:col-span-3 relative">
+                  <Select value={filterSala} onValueChange={setFilterSala}>
+                    <SelectTrigger className={cn("bg-background w-full pr-10 [&>svg]:hidden", filterSala !== 'all' ? "text-foreground font-medium" : "text-muted-foreground")}>
+                      <SelectValue placeholder="Sala" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as salas</SelectItem>
+                      {salasOptions.map((s) => (<SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  {filterSala !== "all" ? (
+                    <button onClick={clearSala} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
+                  )}
+                </div>
+                <div className="md:col-span-2 relative">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-between bg-background px-3 pr-10", !filterDate ? "text-muted-foreground" : "text-foreground font-medium")}>
+                        <div className="flex items-center truncate">
+                          <span className="truncate">{filterDate ? format(filterDate, "dd/MM/yyyy", { locale: ptBR }) : "Todas as datas"}</span>
+                        </div>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent mode="single" selected={filterDate} onSelect={setFilterDate} initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                  {filterDate ? (
+                    <div role="button" onClick={clearDate} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
+                      <X className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
+                  )}
+                </div>
+                <div className="md:col-span-2 relative">
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className={cn("bg-background w-full pr-10 [&>svg]:hidden", filterStatus !== 'todos' ? "text-foreground font-medium" : "text-muted-foreground")}>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os tipos</SelectItem>
+                      <SelectItem value="ok">Sem Avarias</SelectItem>
+                      <SelectItem value="avaria">Com Avaria</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {filterStatus !== "todos" ? (
+                    <button onClick={clearStatus} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50 pointer-events-none" />
+                  )}
+                </div>
+              </div>
 
-                <div className="h-[600px] overflow-y-auto p-4 bg-slate-50/50 dark:bg-zinc-950/20">
-                    <div className="space-y-2">
-                        {historicoAgrupado.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-60">
-                                <Search className="h-10 w-10 mb-2" />
-                                <p>Nenhum histórico encontrado.</p>
-                            </div>
-                        ) : (
-                            historicoAgrupado.map((h) => (
-                                <div 
-                                  key={h.idChecklist || h.groupId} 
-                                  onClick={() => handleOpenDetails(h)}
-                                  className="group flex flex-col md:flex-row md:items-center justify-between p-4 bg-card border rounded-lg hover:border-primary/50 hover:shadow-md transition-all shadow-sm cursor-pointer"
-                                >
-                                    <div className="flex items-start gap-4 mb-3 md:mb-0">
-                                        <div className={cn("mt-1 p-2 rounded-full shrink-0", h.materialOk ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600")}>
-                                            {h.materialOk ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-base group-hover:text-primary transition-colors flex items-center gap-2">
-                                                {h.salaNome}
-                                                {h.isSeries && (
-                                                    <span className="text-[10px] font-medium px-2 py-0.5 bg-violet-50 text-violet-700 border border-violet-100 rounded-full flex items-center gap-1">
-                                                        <Layers className="h-3 w-3" /> Série
-                                                    </span>
-                                                )}
-                                            </p>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-                                                <User className="h-3 w-3" /> <span className="truncate max-w-[150px]">{h.docente}</span>
-                                                <span className="text-zinc-300">|</span>
-                                                <Calendar className="h-3 w-3" /> 
-                                                <span>
-                                                    {h.isSeries 
-                                                        ? `${format(h.dateStart, "dd/MM/yyyy")} a ${format(h.dateEnd, "dd/MM/yyyy")}`
-                                                        : new Date(h.data).toLocaleDateString('pt-BR')
-                                                    }
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pl-12 md:pl-0">
-                                        <span className={cn("text-[10px] font-bold px-2 py-1 rounded border uppercase tracking-wider", h.materialOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200")}>
-                                            {h.materialOk ? 'INTEGRIDADE TOTAL' : 'AVARIA REGISTRADA'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+              <div className="h-[600px] overflow-y-auto p-4 bg-slate-50/50 dark:bg-zinc-950/20">
+                <div className="space-y-2">
+                  {historicoAgrupado.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-60">
+                      <Search className="h-10 w-10 mb-2" />
+                      <p>Nenhum histórico encontrado.</p>
                     </div>
+                  ) : (
+                    historicoAgrupado.map((h) => (
+                      <div
+                        key={h.idChecklist || h.groupId}
+                        onClick={() => handleOpenDetails(h)}
+                        className="group flex flex-col md:flex-row md:items-center justify-between p-4 bg-card border rounded-lg hover:border-primary/50 hover:shadow-md transition-all shadow-sm cursor-pointer"
+                      >
+                        <div className="flex items-start gap-4 mb-3 md:mb-0">
+                          {/* BOLINHA STATUS DO CARD DA LISTA */}
+                          <div className={cn("mt-1 p-2 rounded-full shrink-0", 
+                            (h.materialOk && (h.limpezaOk ?? true))
+                            ? "bg-emerald-100 text-emerald-600" 
+                            : "bg-red-100 text-red-600"
+                          )}>
+                            {(h.materialOk && (h.limpezaOk ?? true)) ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-base group-hover:text-primary transition-colors flex items-center gap-2">
+                              {h.salaNome}
+                              {h.isSeries && (
+                                <span className="text-[10px] font-medium px-2 py-0.5 bg-violet-50 text-violet-700 border border-violet-100 rounded-full flex items-center gap-1">
+                                  <Layers className="h-3 w-3" /> Série
+                                </span>
+                              )}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
+                              <User className="h-3 w-3" /> <span className="truncate max-w-[150px]">{h.docente}</span>
+                              <span className="text-zinc-300">|</span>
+                              <Calendar className="h-3 w-3" />
+                              <span>
+                                {h.isSeries
+                                  ? `${format(h.dateStart, "dd/MM/yyyy")} a ${format(h.dateEnd, "dd/MM/yyyy")}`
+                                  : new Date(h.data).toLocaleDateString('pt-BR')
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pl-12 md:pl-0">
+                          <span className={cn("text-[10px] font-bold px-2 py-1 rounded border uppercase tracking-wider", 
+                             (h.materialOk && (h.limpezaOk ?? true))
+                             ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                             : "bg-red-50 text-red-700 border-red-200"
+                          )}>
+                            {(h.materialOk && (h.limpezaOk ?? true)) ? 'INTEGRIDADE TOTAL' : 'AVARIA REGISTRADA'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
+              </div>
             </div>
           </section>
         </div>
@@ -535,18 +449,18 @@ export default function RelatoriosPage() {
         <Dialog open={!!selected} onOpenChange={(open) => !open && !loading && setSelected(null)}>
           <DialogContent className="sm:max-w-lg w-full max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl">
             <DialogHeader className="px-6 py-4 bg-zinc-50 dark:bg-zinc-900 border-b flex flex-col gap-0.5">
-                <DialogTitle className="text-xl font-bold leading-none flex items-center gap-2">
-                    Conferência
-                    {selected?.isSeries && <Badge variant="secondary" className="text-[10px] h-5 px-1.5"><Layers className="h-3 w-3 mr-1"/> Série</Badge>}
-                </DialogTitle>
-                <p className="text-muted-foreground text-xs font-medium line-clamp-1">{selected?.salaNome}</p>
+              <DialogTitle className="text-xl font-bold leading-none flex items-center gap-2">
+                Conferência
+                {selected?.isSeries && <Badge variant="secondary" className="text-[10px] h-5 px-1.5"><Layers className="h-3 w-3 mr-1" /> Série</Badge>}
+              </DialogTitle>
+              <p className="text-muted-foreground text-xs font-medium line-clamp-1">{selected?.salaNome}</p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-6 pt-0 bg-white dark:bg-zinc-950">
               {selected && (
-                <ChecklistForm 
-                  equipamentos={equipamentos} 
-                  isSubmitting={loading} 
-                  onSubmit={handleFinish} 
+                <ChecklistForm
+                  equipamentos={equipamentos}
+                  isSubmitting={loading}
+                  onSubmit={handleFinish}
                   dadosAgendamento={selected}
                 />
               )}
@@ -559,110 +473,140 @@ export default function RelatoriosPage() {
             {viewReport && (
               <>
                 <DialogHeader className="px-6 py-4 bg-zinc-50 dark:bg-zinc-900 border-b flex flex-col gap-1 text-left">
-                    <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
-                        {viewReport.salaNome}
-                        {viewReport.isSeries && (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5"><Layers className="h-3 w-3 mr-1"/> Série</Badge>
-                        )}
-                    </DialogTitle>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {viewReport.isSeries 
-                                ? `${format(viewReport.dateStart, "dd/MM/yyyy")} a ${format(viewReport.dateEnd, "dd/MM/yyyy")}`
-                                : new Date(viewReport.data).toLocaleDateString('pt-BR')
-                            }
-                        </span>
-                        <span className="text-zinc-300">|</span>
-                        <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {viewReport.docente}
-                        </span>
-                    </div>
+                  <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
+                    {viewReport.salaNome}
+                    {viewReport.isSeries && (
+                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5"><Layers className="h-3 w-3 mr-1" /> Série</Badge>
+                    )}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {viewReport.isSeries
+                        ? `${format(viewReport.dateStart, "dd/MM/yyyy")} a ${format(viewReport.dateEnd, "dd/MM/yyyy")}`
+                        : new Date(viewReport.data).toLocaleDateString('pt-BR')
+                      }
+                    </span>
+                    <span className="text-zinc-300">|</span>
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {viewReport.docente}
+                    </span>
+                  </div>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-zinc-950">
-                   
-                   {/* ALERTA DE SÉRIE DENTRO DO VISUALIZADOR DE HISTÓRICO TBM */}
-                   {viewReport.isSeries && (
-                        <div className="mb-6 p-4 bg-violet-50 border border-violet-100 rounded-lg flex items-center gap-3">
-                            <div className="p-2 bg-violet-100 rounded-full shrink-0">
-                                <Layers className="h-5 w-5 text-violet-600" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-violet-900">Relatório em Série</h4>
-                                <p className="text-xs text-violet-700">
-                                    Este checklist foi aplicado a {viewReport.count} agendamentos no período de {format(viewReport.dateStart, "dd/MM/yyyy")} a {format(viewReport.dateEnd, "dd/MM/yyyy")}.
-                                </p>
-                            </div>
-                        </div>
-                   )}
 
-                   <div className={cn("flex items-center gap-3 p-4 rounded-lg mb-6 border", viewReport.materialOk ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-800")}>
-                      {viewReport.materialOk ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
-                      <div>
-                        <h4 className="font-bold">{viewReport.materialOk ? "Sem Avarias Registradas" : "Avarias Encontradas"}</h4>
-                        <p className="text-xs opacity-90">{viewReport.materialOk ? "Todos os equipamentos estavam conformes." : "Houve divergência ou dano relatado."}</p>
+                  {viewReport.isSeries && (
+                    <div className="mb-6 p-4 bg-violet-50 border border-violet-100 rounded-lg flex items-center gap-3">
+                      <div className="p-2 bg-violet-100 rounded-full shrink-0">
+                        <Layers className="h-5 w-5 text-violet-600" />
                       </div>
-                   </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-violet-900">Relatório em Série</h4>
+                        <p className="text-xs text-violet-700">
+                          Este checklist foi aplicado a {viewReport.count} agendamentos no período de {format(viewReport.dateStart, "dd/MM/yyyy")} a {format(viewReport.dateEnd, "dd/MM/yyyy")}.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                   <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                     <Package className="h-4 w-4" /> Equipamentos Verificados
-                   </h3>
+                  {/* BANNER PRINCIPAL DO RELATÓRIO - CORRIGIDO PARA OLHAR OS DOIS STATUS */}
+                  <div className={cn("flex items-center gap-3 p-4 rounded-lg mb-6 border", 
+                    (viewReport.materialOk && viewReport.limpezaOk)
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
+                    : "bg-red-50 border-red-200 text-red-800")
+                  }>
+                    {(viewReport.materialOk && viewReport.limpezaOk) ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+                    <div>
+                      <h4 className="font-bold">
+                        {(viewReport.materialOk && viewReport.limpezaOk) ? "Sem Avarias Registradas" : "Avarias Encontradas"}
+                      </h4>
+                      <p className="text-xs opacity-90">
+                        {(viewReport.materialOk && viewReport.limpezaOk) ? "Limpeza e equipamentos conformes." : "Houve divergência em limpeza ou equipamentos."}
+                      </p>
+                    </div>
+                  </div>
 
-                   <div className="grid gap-3">
-                      {viewReport.itens?.map((item: any, idx: number) => (
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" /> Equipamentos Verificados
+                  </h3>
+
+                  {!viewReport.itens || viewReport.itens.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center border-2 border-dashed rounded-lg bg-muted/10 text-muted-foreground">
+                      <Package className="h-10 w-10 mb-2 opacity-20" />
+                      <p className="text-sm font-medium">Nenhum equipamento registrado para esta conferência.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {viewReport.itens.map((item: any, idx: number) => (
                         <div key={idx} className="flex flex-col gap-3 p-3 border rounded-lg bg-card hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                           <div className="flex items-start gap-4">
-                               <div className="h-16 w-16 bg-muted rounded-md shrink-0 overflow-hidden flex items-center justify-center border relative">
-                                  {item.foto ? (
-                                    <Image src={item.foto} alt={item.nome} fill className="object-cover" />
-                                  ) : (
-                                    <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
-                                  )}
-                               </div>
-                               <div className="flex-1 min-w-0 flex flex-col gap-2">
-                                  <div className="flex items-start justify-between">
-                                     <div>
-                                        <p className="font-bold text-sm truncate">{item.nome}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                          <span className="font-medium text-foreground bg-zinc-100 px-1.5 py-0.5 rounded text-[10px] border">
-                                            Qtd: {item.quantidade}
-                                          </span>
-                                        </p>
-                                     </div>
-                                     <div className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase border", item.status === 'ok' ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-700 border-red-200")}>
-                                        {item.status === 'ok' ? 'Conforme' : 'Problema'}
-                                     </div>
-                                  </div>
-                                  {item.status === 'avaria' && item.tipoAvaria && (
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-bold text-red-700 uppercase">Problema:</span>
-                                        <span className="text-[11px] font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                                            {item.tipoAvaria}
-                                        </span>
-                                    </div>
-                                  )}
-                               </div>
-                           </div>
-                           {item.observacao && (
-                            <div className="w-full p-2.5 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100 text-xs rounded-md border border-amber-200 dark:border-amber-800/50 flex flex-col gap-1">
-                              <span className="text-[10px] font-bold uppercase opacity-70">Observação:</span>
-                              <span>{item.observacao}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 bg-muted rounded-md shrink-0 overflow-hidden flex items-center justify-center border relative">
+                              {item.foto ? (
+                                <Image src={item.foto} alt={item.nome} fill className="object-cover" />
+                              ) : (
+                                <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
+                              )}
                             </div>
-                           )}
+                            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-bold text-sm truncate">{item.nome}</p>
+                                <span className="font-medium text-foreground bg-zinc-100 px-2 py-0.5 rounded-full text-[10px] border shrink-0">
+                                  Qtd: {item.quantidade}
+                                </span>
+                              </div>
+                              {item.status === 'avaria' && item.tipoAvaria && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-bold text-red-700 uppercase">Problema:</span>
+                                  <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                                    {item.tipoAvaria}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
-                   </div>
+                    </div>
+                  )}
 
-                   <div className="mt-6">
-                      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Observações Gerais</h3>
-                      <div className="p-4 bg-muted/30 rounded-lg border text-sm min-h-[80px]">
-                        {viewReport.observacaoGeral || <span className="text-muted-foreground italic">Nenhuma observação geral registrada.</span>}
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Card Limpeza */}
+                      <div className={cn("flex items-center gap-3 p-3 rounded-lg border", viewReport.limpezaOk ? "bg-white border-zinc-200" : "bg-red-50 border-red-200")}>
+                          <div className={cn("p-2 rounded-md shrink-0", viewReport.limpezaOk ? "bg-zinc-100" : "bg-red-100")}>
+                              <Brush className={cn("h-4 w-4", viewReport.limpezaOk ? "text-zinc-500" : "text-red-500")} />
+                          </div>
+                          <div className="flex flex-col">
+                              <span className="text-sm font-bold text-foreground">Integridade da Sala</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  {viewReport.limpezaOk ? <><CheckCircle2 className="h-3 w-3 text-emerald-600"/> Conforme</> : <><XCircle className="h-3 w-3 text-red-600"/> Problema</>}
+                              </span>
+                          </div>
                       </div>
-                   </div>
+
+                      {/* Card Equipamentos */}
+                      <div className={cn("flex items-center gap-3 p-3 rounded-lg border", viewReport.materialOk ? "bg-white border-zinc-200" : "bg-red-50 border-red-200")}>
+                          <div className={cn("p-2 rounded-md shrink-0", viewReport.materialOk ? "bg-zinc-100" : "bg-red-100")}>
+                              <Box className={cn("h-4 w-4", viewReport.materialOk ? "text-zinc-500" : "text-red-500")} />
+                          </div>
+                          <div className="flex flex-col">
+                              <span className="text-sm font-bold text-foreground">Integridade dos Equipamentos</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  {viewReport.materialOk ? <><CheckCircle2 className="h-3 w-3 text-emerald-600"/> Conforme</> : <><XCircle className="h-3 w-3 text-red-600"/> Problema</>}
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Observações Gerais</h3>
+                    <div className="p-4 bg-muted/30 rounded-lg border text-sm min-h-[80px]">
+                      {viewReport.observacaoGeral || <span className="text-muted-foreground italic">Nenhuma observação geral registrada.</span>}
+                    </div>
+                  </div>
                 </div>
-                
+
                 <div className="p-4 border-t bg-muted/10 flex justify-end">
                   <Button variant="outline" onClick={() => setViewReport(null)}>Fechar</Button>
                 </div>

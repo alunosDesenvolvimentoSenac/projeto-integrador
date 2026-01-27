@@ -1,6 +1,5 @@
 import { pgTable, index, foreignKey, bigint, timestamp, varchar, integer, boolean, unique, text, pgEnum, jsonb } from "drizzle-orm/pg-core"
 
-// 1. Enums e Tabelas Base (Sem dependências)
 export const statusAgendamento = pgEnum("status_agendamento", ['pendente', 'confirmado', 'concluido'])
 
 export const unidades = pgTable("unidades", {
@@ -20,7 +19,6 @@ export const perfis = pgTable("perfis", {
     isAdmin: boolean("is_admin").default(false).notNull(),
 });
 
-// 2. Tabelas com dependências simples
 export const salas = pgTable("salas", {
     idSala: bigint("id_sala", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     codigoSala: varchar("codigo_sala", { length: 50 }).notNull(),
@@ -62,7 +60,6 @@ export const turmas = pgTable("turmas", {
     foreignKey({ columns: [table.idUnidade], foreignColumns: [unidades.idUnidade], name: "fk_turmas_unidade" }),
 ]);
 
-// 3. Tabelas principais (Agendamentos e Equipamentos)
 export const agendamentos = pgTable("agendamentos", {
     idAgendamento: bigint("id_agendamento", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     dataHorarioInicio: timestamp("data_horario_inicio", { withTimezone: true, mode: 'string' }).notNull(),
@@ -88,18 +85,19 @@ export const equipamentos = pgTable("equipamentos", {
     quantidade: integer().default(1).notNull(),
     ativo: boolean().default(true).notNull(),
     observacao: text(),
-    // ADICIONADO AQUI:
     caminhoImagem: varchar("caminho_imagem", { length: 500 }), 
     idSala: bigint("id_sala", { mode: "number" }).notNull(),
 }, (table) => [
     foreignKey({ columns: [table.idSala], foreignColumns: [salas.idSala], name: "fk_equipamentos_sala" }).onUpdate("cascade"),
 ]);
 
-// 4. Checklist
 export const checklists = pgTable("checklists", {
     idChecklist: bigint("id_checklist", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     dataChecklist: timestamp("data_checklist", { withTimezone: true, mode: 'string' }).defaultNow(),
+    
     materialOk: boolean("material_ok").default(false).notNull(),
+    limpezaOk: boolean("limpeza_ok").default(true).notNull(), 
+
     observacao: text(),
     disciplina: varchar("disciplina", { length: 255 }),
     idAgendamento: bigint("id_agendamento", { mode: "number" }).notNull(),
@@ -113,7 +111,7 @@ export const checklistItens = pgTable("checklist_itens", {
     idEquipamento: bigint("id_equipamento", { mode: "number" }).notNull(),
     quantidadeCorreta: boolean("quantidade_correta").default(true).notNull(),
     possuiAvaria: boolean("possui_avaria").default(false).notNull(),
-    detalhesAvaria: jsonb("detalhes_avaria"), // JSON: { faltando: boolean, quebrado: boolean, outros: boolean }
+    detalhesAvaria: jsonb("detalhes_avaria"),
     observacao: text("observacao"),
 }, (table) => [
     foreignKey({ columns: [table.idChecklist], foreignColumns: [checklists.idChecklist], name: "fk_itens_checklist" }).onDelete("cascade"),

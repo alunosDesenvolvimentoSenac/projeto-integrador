@@ -35,61 +35,93 @@ export async function getEquipamentosDaSalaAction(idSala: number) {
   return await db.select().from(equipamentos).where(eq(equipamentos.idSala, idSala))
 }
 
-export async function salvarChecklistAction(payload: any) {
-  try {
-    let idsParaSalvar: number[] = [payload.idAgendamento];
+type ChecklistPayload = {
+  idAgendamento: number; 
+  groupId?: string; 
+  materialOk: boolean;
+  limpezaOk: boolean;
+  observacaoGeral: string;
+  disciplina?: string | null; 
+  itens: {
+    idEquipamento: number;
+    tudoOk: boolean; 
+    possuiAvaria: boolean;
+    detalhesAvaria: any; 
+  }[];
+};
 
-    if (payload.groupId) {
-        const agendamentosDoGrupo = await db
+export async function salvarChecklistAction(data: ChecklistPayload) {
+  try {
+    console.log("Recebendo dados para salvar:", JSON.stringify(data, null, 2));
+
+    let idsParaSalvar: number[] = [];
+
+    if (data.groupId) {
+        const agendamentosSerie = await db
             .select({ id: agendamentos.idAgendamento })
             .from(agendamentos)
             .where(and(
-                eq(agendamentos.codigoSerie, payload.groupId),
+                eq(agendamentos.codigoSerie, data.groupId),
                 eq(agendamentos.status, 'confirmado'),
                 notExists(
                     db.select().from(checklists).where(eq(checklists.idAgendamento, agendamentos.idAgendamento))
                 )
             ));
         
-        if (agendamentosDoGrupo.length > 0) {
-            idsParaSalvar = agendamentosDoGrupo.map(a => a.id);
+        idsParaSalvar = agendamentosSerie.map(a => a.id);
+    } else {
+        const id = Number(data.idAgendamento);
+        if (!isNaN(id)) {
+            idsParaSalvar = [id];
         }
+    }
+
+    if (idsParaSalvar.length === 0) {
+        return { success: false, error: "Nenhum agendamento pendente encontrado para salvar." };
     }
 
     for (const idAgendamento of idsParaSalvar) {
-        const [checklist] = await db.insert(checklists).values({
-          idAgendamento: idAgendamento,
-          materialOk: payload.materialOk,
-          disciplina: payload.disciplina,
-          observacao: payload.observacaoGeral || ""
-        }).returning()
+        const [insertedChecklist] = await db
+          .insert(checklists)
+          .values({
+            idAgendamento: idAgendamento,
+            materialOk: data.materialOk,
+            limpezaOk: data.limpezaOk,
+            observacao: data.observacaoGeral || "",
+            disciplina: data.disciplina,
+            dataChecklist: new Date().toISOString(),
+          })
+          .returning({ idChecklist: checklists.idChecklist });
 
-        if (!checklist) continue;
+        if (!insertedChecklist) continue;
 
-        if (payload.itens && payload.itens.length > 0) {
-          const itensParaSalvar = payload.itens.map((it: any) => ({
-            idChecklist: checklist.idChecklist,
-            idEquipamento: it.idEquipamento,
-            quantidadeCorreta: it.quantidadeCorreta,
-            possuiAvaria: it.possuiAvaria,
-            detalhesAvaria: it.detalhesAvaria, 
-            observacao: it.observacao
-          }))
-          await db.insert(checklistItens).values(itensParaSalvar)
+        const checklistId = insertedChecklist.idChecklist;
+
+        if (data.itens && data.itens.length > 0) {
+          const itensToInsert = data.itens.map((item) => ({
+            idChecklist: checklistId,
+            idEquipamento: item.idEquipamento,
+            quantidadeCorreta: item.tudoOk, 
+            possuiAvaria: item.possuiAvaria,
+            detalhesAvaria: item.detalhesAvaria,
+            observacao: item.possuiAvaria ? "Avaria reportada" : null,
+          }));
+
+          await db.insert(checklistItens).values(itensToInsert);
         }
     }
 
-    if (idsParaSalvar.length > 0) {
-        await db.update(agendamentos)
-          .set({ status: 'concluido' })
-          .where(inArray(agendamentos.idAgendamento, idsParaSalvar))
-    }
+    await db.update(agendamentos)
+        .set({ status: 'concluido' }) 
+        .where(inArray(agendamentos.idAgendamento, idsParaSalvar));
 
-    revalidatePath("/relatorios")
-    return { success: true }
-  } catch (e) {
-    console.error("Erro no server action:", e)
-    return { success: false, error: String(e) }
+    revalidatePath("/dashboard/meus-agendamentos");
+    revalidatePath("/relatorios");
+    return { success: true };
+
+  } catch (error) {
+    console.error("Erro CRÍTICO ao salvar checklist:", error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -136,6 +168,7 @@ export async function getHistoricoChecklistsAction(filters?: HistoricoFilters) {
         data: checklists.dataChecklist,
         inicio: agendamentos.dataHorarioInicio,
         materialOk: checklists.materialOk,
+        limpezaOk: checklists.limpezaOk,
         salaNome: salas.descricaoSala,
         docente: usuarios.nome,
         idAgendamento: agendamentos.idAgendamento,
@@ -157,7 +190,10 @@ export async function getHistoricoChecklistsAction(filters?: HistoricoFilters) {
 export async function getDetalhesDoChecklistAction(idChecklist: number) {
   try {
     const checklistData = await db
-      .select({ observacaoGeral: checklists.observacao })
+      .select({ 
+        observacaoGeral: checklists.observacao,
+        limpezaOk: checklists.limpezaOk
+      })
       .from(checklists)
       .where(eq(checklists.idChecklist, idChecklist))
       .limit(1);
@@ -179,6 +215,7 @@ export async function getDetalhesDoChecklistAction(idChecklist: number) {
 
     return {
       observacaoGeral: checklistData[0].observacaoGeral ?? "",
+      limpezaOk: checklistData[0].limpezaOk,
       itens: itensData.map((item) => {
         let tipoAvariaTexto = "";
         if (item.detalhesAvaria && typeof item.detalhesAvaria === 'object') {

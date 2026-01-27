@@ -109,7 +109,7 @@ const DATA_MENU = {
   ],
 }
 
-const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações", "Usuários", "Perfis", "Unidades", "Salas", "Equipamentos"];
+const ADMIN_ONLY_MENUS = ["Cadastros", "Solicitações", "Usuários", "Perfis", "Unidades", "Salas", "Equipamentos", "Relatórios"];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   

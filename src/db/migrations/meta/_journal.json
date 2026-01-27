@@ -15,6 +15,13 @@
       "when": 1765334244092,
       "tag": "0001_needy_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769556855889,
+      "tag": "0002_needy_blockbuster",
+      "breakpoints": true
     }
   ]
 }
