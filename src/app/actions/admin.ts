@@ -19,29 +19,28 @@ export async function listarAreas() {
 
 
 
-export async function cadastrarDocenteNoBanco(
+export async function cadastrarUsuarioNoBanco(
   uid: string, 
   nome: string, 
   email: string, 
   idUnidade: number,
-  departamento?: string // 1. Novo argumento opcional
+  idPerfil: number,
+  departamento: string
 ) {
   try {
-    const ID_PERFIL_DOCENTE = 2; 
-
     await db.insert(usuarios).values({
       uidFirebase: uid,
       nome: nome,
       email: email,
       idUnidade: idUnidade,
-      idPerfil: ID_PERFIL_DOCENTE,
-      departamento: departamento || null, // 2. Inserindo no banco
-      ativo: true // Garante que o usuário já nasça ativo
+      idPerfil: idPerfil,
+      departamento: departamento || null,
+      ativo: true 
     });
 
-    return { success: true, message: "Cadastro realizado com sucesso!" };
+    return { success: true, message: "Usuário cadastrado com sucesso!" };
   } catch (error) {
-    console.error("Erro ao salvar docente no banco:", error);
+    console.error("Erro ao salvar usuário:", error);
     return { success: false, message: "Erro ao vincular dados no sistema." };
   }
 }
@@ -58,6 +57,8 @@ export async function cadastrarUnidadeNoBanco(descricao: string) {
     return { success: false, message: "Erro ao salvar no banco de dados." };
   }
 }
+
+
 
 export async function cadastrarSalaNoBanco(dados: {
     codigoSala: string;
