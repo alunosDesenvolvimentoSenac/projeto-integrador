@@ -17,34 +17,14 @@ export async function listarAreas() {
 }
 
 
-export async function cadastrarUsuarioNoBanco(
-  uid: string, 
-  nome: string, 
-  email: string, 
-  idUnidade: number,
-  idPerfil: number
-) {
-  try {
-    await db.insert(usuarios).values({
-      uidFirebase: uid,
-      nome: nome,
-      email: email,
-      idUnidade: idUnidade,
-      idPerfil: idPerfil,
-    });
 
-    return { success: true, message: "Usuário cadastrado com sucesso!" };
-  } catch (error) {
-    console.error("Erro ao salvar usuário:", error);
-    return { success: false, message: "Erro ao vincular dados no sistema." };
-  }
-}
 
 export async function cadastrarDocenteNoBanco(
   uid: string, 
   nome: string, 
   email: string, 
-  idUnidade: number
+  idUnidade: number,
+  departamento?: string // 1. Novo argumento opcional
 ) {
   try {
     const ID_PERFIL_DOCENTE = 2; 
@@ -55,6 +35,8 @@ export async function cadastrarDocenteNoBanco(
       email: email,
       idUnidade: idUnidade,
       idPerfil: ID_PERFIL_DOCENTE,
+      departamento: departamento || null, // 2. Inserindo no banco
+      ativo: true // Garante que o usuário já nasça ativo
     });
 
     return { success: true, message: "Cadastro realizado com sucesso!" };
