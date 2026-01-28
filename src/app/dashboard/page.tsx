@@ -23,7 +23,6 @@ import {
   getSalasAction 
 } from "@/app/actions/agendamentos"
 
-// Importar a action de relatórios pendentes
 import { getRelatoriosPendentesAction } from "@/app/actions/checklist"
 
 import { format } from "date-fns"
@@ -231,21 +230,35 @@ export default function DashboardView() {
     }
 
     const startDate = new Date(data.startDetails.y, data.startDetails.m, data.startDetails.d);
-    const [endY, endM, endD] = data.endDateStr.split('-').map(Number);
-    const endDate = new Date(endY, endM - 1, endD);
+    
+    let endDate = startDate;
+    if (data.endDateStr) {
+        const [endY, endM, endD] = data.endDateStr.split('-').map(Number);
+        endDate = new Date(endY, endM - 1, endD);
+    }
+    
     const actualEndDate = endDate < startDate ? startDate : endDate;
 
     const appointmentsToSave: any[] = [];
-    const createDateLoop = new Date(startDate);
+    
+    const currentDateIterator = new Date(startDate);
     const todayZero = new Date(); todayZero.setHours(0,0,0,0);
     const now = new Date(); const currentHour = now.getHours();
     const initialStatus = currentUser.role === "ADMIN" ? "confirmado" : "pendente";
 
-    for (let d = createDateLoop; d <= actualEndDate; d.setDate(d.getDate() + 1)) {
-        const currentDia = d.getDate();
-        const currentMes = d.getMonth();
-        const currentAno = d.getFullYear();
-        const isLoopToday = d.getTime() === todayZero.getTime();
+    while (currentDateIterator <= actualEndDate) {
+        const currentDia = currentDateIterator.getDate();
+        const currentMes = currentDateIterator.getMonth();
+        const currentAno = currentDateIterator.getFullYear();
+        const isLoopToday = currentDateIterator.getTime() === todayZero.getTime();
+
+        const dayOfWeek = currentDateIterator.getDay(); // 0-6
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (isWeekend && currentUser.role !== "ADMIN") {
+            currentDateIterator.setDate(currentDateIterator.getDate() + 1);
+            continue; 
+        }
 
         data.periodos.forEach((p: Periodo) => {
               let skip = false;
@@ -266,10 +279,13 @@ export default function DashboardView() {
                   });
               }
         });
+
+        // Avança um dia
+        currentDateIterator.setDate(currentDateIterator.getDate() + 1);
     }
 
     if (appointmentsToSave.length === 0) {
-        toast.warning("Indisponível", { description: "Horários ocupados ou já passados." });
+        toast.warning("Nenhum horário disponível", { description: "Horários ocupados, já passados ou restritos (fim de semana)." });
         return;
     }
 
@@ -346,7 +362,6 @@ export default function DashboardView() {
     } catch (error) { toast.error("Erro ao aprovar.", { id: toastId }); }
   }
 
-  // --- CALENDAR HELPERS ---
   const calendarDays = React.useMemo(() => {
     const year = date.getFullYear(); const month = date.getMonth();
     const firstDayOfMonth = new Date(year, month, 1).getDay(); 
@@ -376,7 +391,6 @@ export default function DashboardView() {
     return filtered.sort((a, b) => order[a.periodo] - order[b.periodo]);
   }
 
-  // --- UI RENDER ---
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -862,7 +876,7 @@ function AppointmentFormDialog({ isOpen, onClose, formData, onSave, laboratorios
                 <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-2">
                         <Label htmlFor="startDate" className="text-xs text-muted-foreground uppercase font-semibold">Data Inicial</Label>
-                         <Popover>
+                          <Popover>
                           <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{startDate ? format(startDate, "PPP", { locale: ptBR }) : <span>Selecione...</span>}</Button></PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={handleStartDateSelect} initialFocus locale={ptBR} disabled={(date) => date < today} /></PopoverContent>
                         </Popover>

@@ -1,8 +1,8 @@
 "use server"
 
 import { db } from "@/db";
-import { agendamentos, usuarios, salas, equipamentos, checklists, checklistItens } from "@/db/migrations/schema"; 
-import { asc, eq, and, notExists } from "drizzle-orm"; 
+import { agendamentos, usuarios, salas } from "@/db/migrations/schema"; 
+import { asc, eq, and } from "drizzle-orm"; 
 import { revalidatePath } from "next/cache";
 
 const HORARIOS = {
@@ -12,7 +12,7 @@ const HORARIOS = {
 };
 
 // ==========================================================
-// --- ACTIONS DO DASHBOARD (NÃO APAGUE ESTAS) ---
+// --- ACTIONS DO DASHBOARD ---
 // ==========================================================
 
 export async function getAgendamentosAction() {
@@ -61,12 +61,50 @@ export async function getAgendamentosAction() {
 
 export async function saveAgendamentoAction(items: any[], userId: number) {
   try {
-    const inserts = items.map(item => {
+    // 1. VERIFICAÇÃO DE PERMISSÃO NO SERVIDOR
+    const usuarioBanco = await db
+      .select({ 
+        idPerfil: usuarios.idPerfil 
+      })
+      .from(usuarios)
+      .where(eq(usuarios.idUsuario, userId))
+      .limit(1);
+
+    if (!usuarioBanco.length) {
+        return { success: false, error: "Usuário não encontrado." };
+    }
+
+    // ATENÇÃO: Verifique se no seu banco id_perfil 1 é realmente ADMIN.
+    const isAdmin = usuarioBanco[0].idPerfil === 1; 
+    
+    // Debug no terminal do servidor para ver quem está tentando salvar
+    console.log(`Tentativa de agendamento por UserID: ${userId}. É Admin? ${isAdmin}`);
+
+    const inserts: any[] = [];
+
+    for (const item of items) {
       const h = HORARIOS[item.periodo as keyof typeof HORARIOS] || HORARIOS['Manhã'];
+      
+      // Cria a data usando o dia/mês/ano explícitos que vieram do front
       const inicio = new Date(item.ano, item.mes, item.dia, h.start, 0, 0);
       const fim = new Date(item.ano, item.mes, item.dia, h.end, 0, 0);
 
-      return {
+      // --- VALIDAÇÃO ROBUSTA DE FIM DE SEMANA ---
+      // getDay(): 0 = Domingo, 1 = Segunda ... 6 = Sábado
+      // Usamos a data criada localmente com os dados numéricos para garantir precisão
+      const dayOfWeek = inicio.getDay(); 
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      // Log para debug se necessário
+      // console.log(`Data: ${item.dia}/${item.mes + 1}/${item.ano} - DiaSemana: ${dayOfWeek} - FimDeSemana? ${isWeekend}`);
+
+      // SE É FIM DE SEMANA E NÃO É ADMIN, PULA FORA
+      if (isWeekend && !isAdmin) {
+         continue; // Pula este item do loop, não adiciona no array 'inserts'
+      }
+      // ----------------------------------------------
+
+      inserts.push({
         dataHorarioInicio: inicio.toISOString(),
         dataHorarioFim: fim.toISOString(),
         status: (['pendente', 'confirmado', 'concluido'].includes(item.status) ? item.status : 'pendente') as any,
@@ -75,13 +113,19 @@ export async function saveAgendamentoAction(items: any[], userId: number) {
         observacao: item.observacao || null,
         codigoSerie: item.groupId || null,
         disciplina: item.disciplina || null,
-      };
-    });
+      });
+    }
+
+    // Se a lista estiver vazia (tudo foi filtrado), retorna erro
+    if (inserts.length === 0) {
+        return { success: false, error: "Agendamento não permitido para fins de semana." };
+    }
 
     await db.insert(agendamentos).values(inserts);
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
+    console.error(error);
     return { success: false, error: "Falha ao salvar." };
   }
 }
@@ -135,66 +179,4 @@ export async function getSalasAction() {
     const data = await db.select({ id: salas.idSala, nome: salas.descricaoSala, codigo: salas.codigoSala }).from(salas).orderBy(asc(salas.codigoSala));
     return data.map(s => ({ ...s, id: Number(s.id) }));
   } catch (error) { return []; }
-}
-
-// ==========================================================
-// --- ACTIONS NOVAS (PARA O RELATÓRIO/CHECKLIST) ---
-// ==========================================================
-
-export async function getRelatoriosPendentesAction() {
-  try {
-    return await db
-      .select({
-        id: agendamentos.idAgendamento,
-        inicio: agendamentos.dataHorarioInicio,
-        docente: usuarios.nome,
-        disciplina: agendamentos.disciplina,
-        salaNome: salas.descricaoSala,
-        idSala: agendamentos.idSala
-      })
-      .from(agendamentos)
-      .innerJoin(usuarios, eq(agendamentos.idUsuario, usuarios.idUsuario))
-      .innerJoin(salas, eq(agendamentos.idSala, salas.idSala))
-      .where(
-        and(
-          eq(agendamentos.status, 'confirmado'),
-          notExists(
-            db.select().from(checklists).where(eq(checklists.idAgendamento, agendamentos.idAgendamento))
-          )
-        )
-      );
-  } catch (e) { return []; }
-}
-
-export async function getEquipamentosDaSalaAction(idSala: number) {
-  return await db.select().from(equipamentos).where(eq(equipamentos.idSala, idSala));
-}
-
-export async function salvarChecklistCompletoAction(idAgendamento: number, materialOk: boolean, itens: any[]) {
-  try {
-    return await db.transaction(async (tx) => {
-      const [checklist] = await tx.insert(checklists).values({
-        idAgendamento: idAgendamento,
-        materialOk: materialOk,
-      }).returning();
-
-      const valuesParaInserir = itens.map(it => ({
-        idChecklist: checklist.idChecklist,
-        idEquipamento: it.idEquipamento,
-        quantidadeCorreta: it.quantidadeCorreta,
-        possuiAvaria: it.possuiAvaria,
-        detalhesAvaria: it.detalhesAvaria,
-        observacao: it.observacao
-      }));
-
-      await tx.insert(checklistItens).values(valuesParaInserir);
-
-      await tx.update(agendamentos).set({ status: 'concluido' }).where(eq(agendamentos.idAgendamento, idAgendamento));
-
-      revalidatePath("/dashboard");
-      return { success: true };
-    });
-  } catch (e) {
-    return { success: false, error: String(e) };
-  }
 }
