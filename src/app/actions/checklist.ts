@@ -42,17 +42,12 @@ type ChecklistPayload = {
   limpezaOk: boolean;
   observacaoGeral: string;
   disciplina?: string | null; 
-  itens: {
-    idEquipamento: number;
-    tudoOk: boolean; 
-    possuiAvaria: boolean;
-    detalhesAvaria: any; 
-  }[];
+  itens: any[];
 };
 
 export async function salvarChecklistAction(data: ChecklistPayload) {
   try {
-    console.log("Recebendo dados para salvar:", JSON.stringify(data, null, 2));
+    console.log("Salvando status geral do checklist:", { material: data.materialOk, limpeza: data.limpezaOk });
 
     let idsParaSalvar: number[] = [];
 
@@ -77,11 +72,11 @@ export async function salvarChecklistAction(data: ChecklistPayload) {
     }
 
     if (idsParaSalvar.length === 0) {
-        return { success: false, error: "Nenhum agendamento pendente encontrado para salvar." };
+        return { success: false, error: "Nenhum agendamento pendente encontrado." };
     }
 
     for (const idAgendamento of idsParaSalvar) {
-        const [insertedChecklist] = await db
+        await db
           .insert(checklists)
           .values({
             idAgendamento: idAgendamento,
@@ -90,25 +85,7 @@ export async function salvarChecklistAction(data: ChecklistPayload) {
             observacao: data.observacaoGeral || "",
             disciplina: data.disciplina,
             dataChecklist: new Date().toISOString(),
-          })
-          .returning({ idChecklist: checklists.idChecklist });
-
-        if (!insertedChecklist) continue;
-
-        const checklistId = insertedChecklist.idChecklist;
-
-        if (data.itens && data.itens.length > 0) {
-          const itensToInsert = data.itens.map((item) => ({
-            idChecklist: checklistId,
-            idEquipamento: item.idEquipamento,
-            quantidadeCorreta: item.tudoOk, 
-            possuiAvaria: item.possuiAvaria,
-            detalhesAvaria: item.detalhesAvaria,
-            observacao: item.possuiAvaria ? "Avaria reportada" : null,
-          }));
-
-          await db.insert(checklistItens).values(itensToInsert);
-        }
+          });
     }
 
     await db.update(agendamentos)
@@ -120,7 +97,7 @@ export async function salvarChecklistAction(data: ChecklistPayload) {
     return { success: true };
 
   } catch (error) {
-    console.error("Erro CRÍTICO ao salvar checklist:", error);
+    console.error("Erro ao salvar checklist:", error);
     return { success: false, error: String(error) };
   }
 }
@@ -192,7 +169,8 @@ export async function getDetalhesDoChecklistAction(idChecklist: number) {
     const checklistData = await db
       .select({ 
         observacaoGeral: checklists.observacao,
-        limpezaOk: checklists.limpezaOk
+        limpezaOk: checklists.limpezaOk,
+        materialOk: checklists.materialOk
       })
       .from(checklists)
       .where(eq(checklists.idChecklist, idChecklist))
@@ -200,45 +178,11 @@ export async function getDetalhesDoChecklistAction(idChecklist: number) {
 
     if (!checklistData.length) throw new Error("Checklist não encontrado");
 
-    const itensData = await db
-      .select({
-        nome: equipamentos.descricao,
-        foto: equipamentos.caminhoImagem,
-        quantidadeRegistrada: equipamentos.quantidade, 
-        possuiAvaria: checklistItens.possuiAvaria,
-        observacaoItem: checklistItens.observacao,
-        detalhesAvaria: checklistItens.detalhesAvaria
-      })
-      .from(checklistItens)
-      .innerJoin(equipamentos, eq(checklistItens.idEquipamento, equipamentos.idEquipamento))
-      .where(eq(checklistItens.idChecklist, idChecklist));
-
     return {
       observacaoGeral: checklistData[0].observacaoGeral ?? "",
       limpezaOk: checklistData[0].limpezaOk,
-      itens: itensData.map((item) => {
-        let tipoAvariaTexto = "";
-        if (item.detalhesAvaria && typeof item.detalhesAvaria === 'object') {
-            try {
-                const entries = Object.entries(item.detalhesAvaria as Record<string, any>);
-                tipoAvariaTexto = entries
-                    .filter(([_, val]) => val === true)
-                    .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1)) 
-                    .join(", ");
-            } catch (err) {
-                console.error("Erro parsing JSON", err);
-            }
-        }
-
-        return {
-            nome: item.nome,
-            foto: item.foto, 
-            quantidade: item.quantidadeRegistrada, 
-            status: item.possuiAvaria ? 'avaria' : 'ok',
-            tipoAvaria: tipoAvariaTexto, 
-            observacao: item.observacaoItem 
-        }
-      })
+      materialOk: checklistData[0].materialOk,
+      itens: []
     };
 
   } catch (e) {

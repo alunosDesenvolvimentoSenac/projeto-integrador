@@ -114,7 +114,7 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
                         <div className="flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                             <span className="text-xs font-bold text-violet-900 dark:text-violet-200 uppercase">
-                                Série ({dadosAgendamento.count} itens)
+                                Série ({dadosAgendamento.count} dias)
                             </span>
                         </div>
                         <span className="text-[10px] font-mono text-violet-700 dark:text-violet-400">
