@@ -36,31 +36,31 @@ const equipe = [
   },
   { 
     papel: "Scrum Masters", 
-    membros: ["Lucas Mori", "André Passoni"], 
+    membros: ["Lucas Henrique Alves Mori", "André Magalhaes Passoni"], 
     icon: Users,
     color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
   },
   { 
     papel: "Development Team", 
-    membros: ["Fabio Silveira", "Lucas Prado"], 
+    membros: ["Fabio Alexandre Rodrigues Silveira", "Lucas Prado Siqueira"], 
     icon: Code2,
     color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
   },
   { 
     papel: "Quality Assurance (QA)", 
-    membros: ["Luise Alberti", "Nicolas Faria"], 
+    membros: ["Luise Alberti", "Nicolas Goncalves De Faria"], 
     icon: SearchCheck,
     color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
   },
   { 
     papel: "Database Administrator (DBA)", 
-    nome: "Francisco Ferreira", 
+    nome: "Francisco de Oliveira Ferreira", 
     icon: Database,
     color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400"
   },
   { 
     papel: "Business Analysts", 
-    membros: ["Rita Nakamura", "Vitor Goulart"], 
+    membros: ["Maria Rita Silva Nakamura", "Vitor Eduardo Schultz Goulart"], 
     icon: Info,
     color: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
   },
@@ -96,10 +96,7 @@ export default function SobrePage() {
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               Sistema de Agendamento de Salas
             </h1>
-            <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-              Uma solução desenvolvida para modernizar, centralizar e assegurar o processo de gestão de agendamentos 
-              de laboratórios e recursos didáticos no ambiente educacional do Senac Minas.
-            </p>
+            
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -144,21 +141,13 @@ export default function SobrePage() {
                       <div className="flex flex-col gap-3 mt-2">
                         {item.nome ? (
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600">
-                                {item.nome.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
+                            
                             <span className="font-medium">{item.nome}</span>
                           </div>
                         ) : (
                           item.membros?.map((membro, idx) => (
                             <div key={idx} className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600">
-                                  {membro.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                </AvatarFallback>
-                              </Avatar>
+                             
                               <span className="font-medium">{membro}</span>
                             </div>
                           ))
@@ -172,7 +161,7 @@ export default function SobrePage() {
           </div>
 
           <footer className="text-center text-sm text-muted-foreground mt-8 pb-4">
-            <p>Desenvolvido como parte do Projeto Integrador - Senac Minas</p>
+            <p>Desenvolvido como Projeto Integrador da Turma 016.2024.0104 – Técnico em Desenvolvimento de Sistemas - Senac Minas – Poços de Caldas</p>
             <p className="text-xs mt-1">Versão 1.0.0</p>
           </footer>
 
