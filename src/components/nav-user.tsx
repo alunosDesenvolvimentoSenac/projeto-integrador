@@ -1,12 +1,16 @@
 "use client"
 
-import * as React from "react"
-import {  Ellipsis, LogOut } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { signOut, onAuthStateChanged } from "firebase/auth"
-import { auth } from "@/lib/firebase" 
-import { getDadosUsuarioSidebar } from "@/app/actions/auth"
+import {
+  ChevronsUpDown,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react"
 
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,67 +25,41 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Avatar,  AvatarFallback, AvatarImage } from "./ui/avatar"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { useRouter } from "next/navigation"
 
-export function NavUser({
-  user,
-}: {
+interface NavUserProps {
   user: {
     name: string
     email: string
     avatar: string
-    role: string
+    role: string 
   }
-}) {
+}
+
+export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar()
   const router = useRouter()
-
-  // 1. Estado para armazenar o cargo (inicia com um placeholder ou vazio)
-  const [cargo, setCargo] = React.useState("Carregando...")
-
-  // 2. Busca os dados assim que o componente carrega
-  React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        try {
-          // Busca o dado real no banco
-          const info = await getDadosUsuarioSidebar(currentUser.uid)
-          
-          if (info && info.cargo) {
-            setCargo(info.cargo)
-          } else {
-            setCargo(user.role || "Usuário") // Fallback caso não tenha cargo definido
-          }
-        } catch (error) {
-          console.error("Erro ao buscar dados do usuário:", error)
-          setCargo("Erro ao carregar")
-        }
-      }
-    })
-
-    // Limpa o listener quando o componente desmonta
-    return () => unsubscribe()
-  }, [user.role])
 
   const handleLogout = async () => {
     try {
       await signOut(auth)
-      router.replace("/") 
+      router.push("/") 
     } catch (error) {
-      console.error("Erro ao deslogar:", error)
+      console.error("Erro ao sair", error)
     }
   }
-  
-  const getInitials = (name: string) => {
-    if (!name) return "CN";
-    const parts = name.trim().split(" ").filter(Boolean);
-    if (parts.length === 0) return "CN";
-    const firstInitial = parts[0][0];
-    const secondInitial = parts[1] ? parts[1][0] : "";
-    return (firstInitial + secondInitial).toUpperCase();
-  }
 
-  const userInitials = getInitials(user.name);
+  const getInitials = (name: string) => {
+    if (!name || name === "Visitante") return "U"
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase()
+  }
 
   return (
     <SidebarMenu>
@@ -94,22 +72,19 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
+                <AvatarFallback className="rounded-lg ">
+                    {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
-              
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs font-medium text-zinc-500">
-                    {cargo}
-                </span>
-                {/* <span className="truncate text-[10px] text-muted-foreground">{user.email}</span> */}
+                <span className="truncate text-xs text-muted-foreground">{user.role || user.email}</span>
               </div>
-              
-              <Ellipsis className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -118,25 +93,25 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {getInitials(user.name)}
+                  </AvatarFallback>
                 </Avatar>
-                
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
-                  
-                  <span className="truncate text-[10px] font-medium text-primary mt-1">
-                      {cargo}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {user.email}
                   </span>
-
-                  <span className="truncate text-[10px] text-muted-foreground">{user.email}</span>
                 </div>
-
               </div>
             </DropdownMenuLabel>
             
+            
+           
+
             <DropdownMenuSeparator />
             
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600 focus:bg-red-50">
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>

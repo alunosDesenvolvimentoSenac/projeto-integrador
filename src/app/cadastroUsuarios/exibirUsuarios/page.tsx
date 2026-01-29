@@ -8,7 +8,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 
-import { columns } from "./columns"
 import { getUsuariosAction } from "@/app/actions/usuarios"
 import { listarUnidades, listarPerfis } from "@/app/actions/admin" 
 
@@ -29,6 +28,12 @@ export default async function Page(props: { searchParams: SearchParams }) {
     listarUnidades(),
     listarPerfis()
   ])
+
+  // Formata os perfis para o formato simples esperado pelo DataTable/Columns
+  const perfisFormatados = perfis.map(p => ({
+      id: p.idPerfil,
+      nome: p.descricaoPerfil
+  }))
     
   return (
     <SidebarProvider>
@@ -41,11 +46,11 @@ export default async function Page(props: { searchParams: SearchParams }) {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                  <BreadcrumbLink >Usuários</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Gerenciar Usuários</BreadcrumbPage>
+                  <BreadcrumbPage>Exibir Usuários</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -53,11 +58,11 @@ export default async function Page(props: { searchParams: SearchParams }) {
         </header>
         
         <div className="flex-1">
-          {/* CORREÇÃO AQUI: Adicionado px-4 para mobile e md:px-0 para telas maiores se preferir, 
-              mas px-4 ou container com padding é essencial no mobile */}
           <div className="container mx-auto py-6 px-4 md:py-10 space-y-4">
-             <UserControls unidades={unidades} perfis={perfis} />
-             <DataTable columns={columns} data={data} />
+              <UserControls unidades={unidades} perfis={perfis} />
+              
+              {/* Passamos perfisFormatados para permitir a edição de perfil */}
+              <DataTable data={data} perfis={perfisFormatados} />
           </div>
         </div>
         

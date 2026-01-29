@@ -20,7 +20,8 @@ export async function getUsuariosAction(filtros?: FiltrosUsuario) {
         email: usuarios.email,
         ativo: usuarios.ativo,
         idPerfil: usuarios.idPerfil,
-        nomePerfil: perfis.descricaoPerfil 
+        nomePerfil: perfis.descricaoPerfil,
+        departamento: usuarios.departamento // 1. ADICIONADO AQUI
       })
       .from(usuarios)
       .leftJoin(perfis, eq(usuarios.idPerfil, perfis.idPerfil))
@@ -59,18 +60,27 @@ export async function getUsuariosAction(filtros?: FiltrosUsuario) {
   }
 }
 
-export async function updateUsuarioAction(id: number, data: { nome: string; email: string; idPerfil: number }) {
+// 2. ATUALIZADO A ASSINATURA DA FUNÇÃO E O UPDATE
+export async function updateUsuarioAction(id: number, data: { 
+    nome: string; 
+    email: string; 
+    idPerfil: number; 
+    departamento?: string | null 
+}) {
   try {
     await db
       .update(usuarios)
       .set({
         nome: data.nome,
         email: data.email,
-        idPerfil: data.idPerfil
+        idPerfil: data.idPerfil,
+        departamento: data.departamento // Inserido no banco
       })
       .where(eq(usuarios.idUsuario, id));
 
-    revalidatePath("/dashboard/usuarios");
+    // Revalida a página para atualizar a tabela imediatamente
+    revalidatePath("/cadastroUsuarios/exibirUsuarios");
+    
     return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar usuário:", error);
@@ -85,7 +95,7 @@ export async function toggleStatusUsuarioAction(id: number, novoStatus: boolean)
       .set({ ativo: novoStatus })
       .where(eq(usuarios.idUsuario, id));
 
-    revalidatePath("/dashboard/usuarios");
+    revalidatePath("/cadastroUsuarios/exibirUsuarios");
     return { success: true };
   } catch (error) {
     console.error("Erro ao alterar status:", error);
@@ -96,7 +106,7 @@ export async function toggleStatusUsuarioAction(id: number, novoStatus: boolean)
 export async function deleteUsuarioAction(id: number) {
   try {
     await db.delete(usuarios).where(eq(usuarios.idUsuario, id));
-    revalidatePath("/dashboard/usuarios");
+    revalidatePath("/cadastroUsuarios/exibirUsuarios");
     return { success: true };
   } catch (error) {
     console.error("Erro ao deletar usuário:", error);

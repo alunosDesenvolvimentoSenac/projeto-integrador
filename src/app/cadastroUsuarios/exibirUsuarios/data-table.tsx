@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -16,15 +15,21 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+import { getColumns, Usuario } from "./columns"
+
+interface DataTableProps {
+  data: Usuario[]
+  perfis: { id: number; nome: string }[] // Nova prop necessária para o modal
 }
 
-export function DataTable<TData, TValue>({
-  columns,
+export function DataTable({
   data,
-}: DataTableProps<TData, TValue>) {
+  perfis, 
+}: DataTableProps) {
+  
+  // Gera as colunas passando as opções de perfis
+  const columns = getColumns(perfis)
+
   const table = useReactTable({
     data,
     columns,
@@ -33,7 +38,6 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="rounded-md border overflow-hidden">
-      {/* ADICIONADO: overflow-x-auto para permitir rolagem horizontal no mobile */}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -41,7 +45,7 @@ export function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="whitespace-nowrap"> {/* whitespace-nowrap evita que cabeçalhos quebrem linha */}
+                    <TableHead key={header.id} className="whitespace-nowrap">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -62,7 +66,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="whitespace-nowrap"> {/* whitespace-nowrap mantém o conteúdo em uma linha */}
+                    <TableCell key={cell.id} className="whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

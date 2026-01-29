@@ -1,26 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+// 1. ALTERAÇÃO AQUI: Importe do componente UI que criamos acima, e NÃO direto da biblioteca 'sonner'
+import { Toaster } from "@/components/ui/sonner"; 
+import { UserProvider } from "@/components/user-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sistema de Agendamentos - Senac Minas",
-  description: "Sistema de Agendamento de Laboratórios",
+  title: "Sistema de Agendamento Senac",
+  description: "Sistema de Agendamento Senac",
 };
-
-const inter = Inter({ // Added Inter font configuration
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,
@@ -29,11 +19,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-br">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
-      >
-        {children}
-
+      <body className={inter.className}>
+        <UserProvider>
+            {children}
+            {/* 2. ALTERAÇÃO AQUI: 
+               - theme="dark": Força o fundo preto e texto branco.
+               - richColors={false}: Garante o visual neutro (sem fundos verdes/vermelhos).
+            */}
+            <Toaster 
+              theme="dark" 
+              richColors={false} 
+              position="bottom-right" 
+              className="z-[99999]" 
+            />
+        </UserProvider>
       </body>
     </html>
   );

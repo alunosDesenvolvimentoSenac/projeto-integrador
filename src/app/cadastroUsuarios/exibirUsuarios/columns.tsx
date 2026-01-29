@@ -1,9 +1,8 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react" // Removido MoreHorizontal
+import { Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-// Removidos os imports do DropdownMenu
 import {
   Dialog,
   DialogContent,
@@ -26,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useTransition } from "react"
-import { toast } from "sonner" 
+import { toast } from "sonner"
 import { updateUsuarioAction, toggleStatusUsuarioAction, deleteUsuarioAction } from "@/app/actions/usuarios"
 
 export type Usuario = {
@@ -36,9 +35,15 @@ export type Usuario = {
   ativo: boolean
   idPerfil: number
   nomePerfil: string | null
+  departamento: string | null
 }
 
-export const columns: ColumnDef<Usuario>[] = [
+interface CellActionProps {
+  usuario: Usuario
+  perfisOptions: { id: number; nome: string }[]
+}
+
+export const getColumns = (perfisOptions: { id: number; nome: string }[]): ColumnDef<Usuario>[] => [
   {
     accessorKey: "nome",
     header: "Nome",
@@ -47,6 +52,7 @@ export const columns: ColumnDef<Usuario>[] = [
     accessorKey: "email",
     header: "Email",
   },
+  // REMOVIDA A COLUNA DEPARTAMENTO DAQUI DA VISUALIZAÇÃO
   {
     accessorKey: "nomePerfil",
     header: "Perfil",
@@ -67,17 +73,19 @@ export const columns: ColumnDef<Usuario>[] = [
   {
     id: "actions",
     header: "Ações",
-    // Aqui chamamos o componente modificado
-    cell: ({ row }) => <CellAction usuario={row.original} />,
+    cell: ({ row }) => <CellAction usuario={row.original} perfisOptions={perfisOptions} />,
   },
 ]
 
-function CellAction({ usuario }: { usuario: Usuario }) {
+function CellAction({ usuario, perfisOptions }: CellActionProps) {
   const [openEdit, setOpenEdit] = useState(false)
   const [openDelete, setOpenDelete] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  // Estados do Formulário
   const [nome, setNome] = useState(usuario.nome)
+  const [departamento, setDepartamento] = useState(usuario.departamento || "") // Mantido o estado para edição
+  const [idPerfil, setIdPerfil] = useState(String(usuario.idPerfil))
   const [status, setStatus] = useState(usuario.ativo ? "ativo" : "inativo")
 
   const handleEdit = async () => {
@@ -86,7 +94,8 @@ function CellAction({ usuario }: { usuario: Usuario }) {
         await updateUsuarioAction(usuario.id, {
           nome: nome,
           email: usuario.email,
-          idPerfil: usuario.idPerfil
+          idPerfil: Number(idPerfil),
+          departamento: departamento // Envia o departamento editado
         })
 
         const novoStatusBool = status === "ativo"
@@ -116,14 +125,13 @@ function CellAction({ usuario }: { usuario: Usuario }) {
 
   return (
     <>
-      {/* MUDANÇA AQUI: Substituímos o Dropdown por uma div com flex e botões diretos */}
-      <div className="flex items-left gap-2">
+      <div className="flex items-center gap-2">
         <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setOpenEdit(true)}
             title="Editar Usuário"
-            className="h-8 w-8"
+            className="h-8 w-8 "
         >
             <Pencil className="h-4 w-4" />
         </Button>
@@ -139,30 +147,60 @@ function CellAction({ usuario }: { usuario: Usuario }) {
         </Button>
       </div>
 
-      {/* Modal Editar (Mesma lógica) */}
+      {/* Modal Editar - Mantido o campo Departamento aqui */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
-            <DialogDescription>Alterar nome e status de {usuario.nome}.</DialogDescription>
+            <DialogDescription>Alterar dados de {usuario.nome}.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            
             <div className="grid gap-2">
               <Label htmlFor="name">Nome</Label>
               <Input id="name" value={nome} onChange={(e) => setNome(e.target.value)} />
             </div>
+
+            {/* O campo continua aqui para edição */}
             <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="dept">Departamento</Label>
+              <Input 
+                id="dept" 
+                value={departamento} 
+                onChange={(e) => setDepartamento(e.target.value)} 
+                placeholder="Exemplo: Secretaria" 
+              />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label>Perfil</Label>
+                    <Select value={idPerfil} onValueChange={setIdPerfil}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {perfisOptions.map((p) => (
+                                <SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={status} onValueChange={setStatus}>
+                        <SelectTrigger>
+                        <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenEdit(false)}>Cancelar</Button>
@@ -173,7 +211,6 @@ function CellAction({ usuario }: { usuario: Usuario }) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Deletar (Mesma lógica) */}
       <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

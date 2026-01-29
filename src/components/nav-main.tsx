@@ -22,7 +22,8 @@ import {
 
 export function NavMain({
   items,
-  label = "Menu" // ADICIONADO: Propriedade label com valor padrão
+  label = "Menu",
+  onToggle 
 }: {
   items: {
     title: string
@@ -34,7 +35,8 @@ export function NavMain({
       url: string
     }[]
   }[],
-  label?: string // ADICIONADO: Tipagem
+  label?: string, // <--- ADICIONEI A VÍRGULA AQUI QUE FALTAVA
+  onToggle?: (title: string, isOpen: boolean) => void
 }) {
   const [isMounted, setIsMounted] = useState(false)
 
@@ -48,14 +50,14 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      {/* ALTERADO: Usa a prop label */}
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible
             key={item.title}
             asChild
-            defaultOpen={item.isActive}
+            open={item.isActive}
+            onOpenChange={(isOpen) => onToggle && onToggle(item.title, isOpen)}
             className="group/collapsible"
           >
             <SidebarMenuItem>

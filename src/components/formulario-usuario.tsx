@@ -18,7 +18,6 @@ import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { cadastrarUsuarioNoBanco } from "@/app/actions/admin"
 
-// Tipagem das props atualizada para receber perfis
 interface FormularioProps extends React.ComponentPropsWithoutRef<"div"> {
   unidades: {
     idUnidade: number;
@@ -39,7 +38,7 @@ export function FormularioUsuario({
   
   const [loading, setLoading] = useState(false)
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("")
-  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("") // Novo State
+  const [perfilSelecionado, setPerfilSelecionado] = useState<string>("")
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -51,6 +50,7 @@ export function FormularioUsuario({
       const nome = formData.get("nome") as string
       const email = formData.get("email") as string
       const password = formData.get("password") as string 
+      const departamento = formData.get("departamento") as string // 1. Captura departamento
 
       try {
         if (!unidadeSelecionada) throw new Error("Selecione a Unidade.");
@@ -60,13 +60,14 @@ export function FormularioUsuario({
         const userCredential = await createUserWithEmailAndPassword(auth, email, password)
         const uid = userCredential.user.uid
 
-        // 2. Envia para o Banco com o Perfil Selecionado
+        // 2. Envia para o Banco
         const result = await cadastrarUsuarioNoBanco(
             uid,
             nome,
             email,
             Number(unidadeSelecionada),
-            Number(perfilSelecionado) // Envia o ID escolhido
+            Number(perfilSelecionado),
+            departamento // 2. Envia para a action
         );
 
         if (result && result.success) {
@@ -107,38 +108,42 @@ export function FormularioUsuario({
               <Label htmlFor="email">Email Corporativo</Label>
               <Input id="email" name="email" type="email" placeholder="usuario@senac.com.br" required disabled={loading} />
             </div>
+
+            {/* 3. INPUT DE DEPARTAMENTO ADICIONADO AQUI */}
+            <div className="grid gap-2">
+              <Label htmlFor="departamento">Departamento</Label>
+              <Input id="departamento" name="departamento" type="text" placeholder="Ex: Tecnologia da Informação" disabled={loading} />
+            </div>
             
-            {/* SELECT UNIDADE */}
             <div className="grid gap-2">
               <Label htmlFor="unidade">Unidade</Label>
               <Select value={unidadeSelecionada} onValueChange={setUnidadeSelecionada} disabled={loading}>
-                 <SelectTrigger className="w-full"> 
-                     <SelectValue placeholder="Selecione a unidade..." />
-                 </SelectTrigger>
-                 <SelectContent>
+                  <SelectTrigger className="w-full"> 
+                      <SelectValue placeholder="Selecione a unidade..." />
+                  </SelectTrigger>
+                  <SelectContent>
                     {unidades?.map((item) => (
                         <SelectItem key={item.idUnidade} value={String(item.idUnidade)}>
                             {item.descricaoUnidade}
                         </SelectItem>
                     ))}
-                 </SelectContent>
+                  </SelectContent>
               </Select>
             </div>
 
-            {/* SELECT PERFIL (NOVO) */}
             <div className="grid gap-2">
               <Label htmlFor="perfil">Perfil de Acesso</Label>
               <Select value={perfilSelecionado} onValueChange={setPerfilSelecionado} disabled={loading}>
-                 <SelectTrigger className="w-full"> 
-                     <SelectValue placeholder="Selecione o nível de acesso..." />
-                 </SelectTrigger>
-                 <SelectContent>
+                  <SelectTrigger className="w-full"> 
+                      <SelectValue placeholder="Selecione o nível de acesso..." />
+                  </SelectTrigger>
+                  <SelectContent>
                     {perfis?.map((item) => (
                         <SelectItem key={item.idPerfil} value={String(item.idPerfil)}>
                             {item.descricaoPerfil}
                         </SelectItem>
                     ))}
-                 </SelectContent>
+                  </SelectContent>
               </Select>
             </div>
 
