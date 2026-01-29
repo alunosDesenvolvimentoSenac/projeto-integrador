@@ -5,6 +5,7 @@ import { agendamentos, checklists, checklistItens, equipamentos, salas, usuarios
 import { eq, and, notExists, desc, sql, inArray } from "drizzle-orm" 
 import { revalidatePath } from "next/cache"
 
+// --- 1. BUSCAR RELATÓRIOS PENDENTES ---
 export async function getRelatoriosPendentesAction() {
   return await db
     .select({
@@ -31,10 +32,12 @@ export async function getRelatoriosPendentesAction() {
     .orderBy(agendamentos.dataHorarioInicio)
 }
 
+// --- 2. BUSCAR EQUIPAMENTOS DA SALA ---
 export async function getEquipamentosDaSalaAction(idSala: number) {
   return await db.select().from(equipamentos).where(eq(equipamentos.idSala, idSala))
 }
 
+// --- 3. SALVAR CHECKLIST ---
 type ChecklistPayload = {
   idAgendamento: number; 
   groupId?: string; 
@@ -102,6 +105,7 @@ export async function salvarChecklistAction(data: ChecklistPayload) {
   }
 }
 
+// --- 4. OPÇÕES DE SALAS ---
 export async function getSalasOptionsAction() {
   return await db
     .select({ id: salas.idSala, nome: salas.descricaoSala })
@@ -109,6 +113,7 @@ export async function getSalasOptionsAction() {
     .orderBy(salas.descricaoSala)
 }
 
+// --- 5. HISTÓRICO ---
 type HistoricoFilters = {
   search?: string
   data?: string
@@ -164,25 +169,50 @@ export async function getHistoricoChecklistsAction(filters?: HistoricoFilters) {
   }
 }
 
+// --- 6. DETALHES (ATUALIZADO) ---
 export async function getDetalhesDoChecklistAction(idChecklist: number) {
   try {
-    const checklistData = await db
+    // 1. Busca os dados do checklist e descobre qual é a Sala através do Agendamento
+    const dadosGerais = await db
       .select({ 
         observacaoGeral: checklists.observacao,
         limpezaOk: checklists.limpezaOk,
-        materialOk: checklists.materialOk
+        materialOk: checklists.materialOk,
+        idSala: agendamentos.idSala // <--- Pegamos o ID da sala aqui
       })
       .from(checklists)
+      .innerJoin(agendamentos, eq(checklists.idAgendamento, agendamentos.idAgendamento))
       .where(eq(checklists.idChecklist, idChecklist))
       .limit(1);
 
-    if (!checklistData.length) throw new Error("Checklist não encontrado");
+    if (!dadosGerais.length) throw new Error("Checklist não encontrado");
+
+    const checklist = dadosGerais[0];
+
+    // 2. Busca os equipamentos daquela sala (Inventário atual)
+    const equipamentosDaSala = await db
+      .select({
+        nome: equipamentos.descricao,
+        foto: equipamentos.caminhoImagem,
+        quantidade: equipamentos.quantidade,
+      })
+      .from(equipamentos)
+      .where(eq(equipamentos.idSala, checklist.idSala)); // <--- Filtra pela sala do agendamento
 
     return {
-      observacaoGeral: checklistData[0].observacaoGeral ?? "",
-      limpezaOk: checklistData[0].limpezaOk,
-      materialOk: checklistData[0].materialOk,
-      itens: []
+      observacaoGeral: checklist.observacaoGeral ?? "",
+      limpezaOk: checklist.limpezaOk,
+      materialOk: checklist.materialOk,
+      // Mapeia para o formato que o frontend espera
+      itens: equipamentosDaSala.map((item) => ({
+        nome: item.nome,
+        foto: item.foto,
+        quantidade: item.quantidade,
+        // Como não salvamos status individual, retornamos padrão
+        status: 'ok', 
+        tipoAvaria: '',
+        observacao: ''
+      }))
     };
 
   } catch (e) {
