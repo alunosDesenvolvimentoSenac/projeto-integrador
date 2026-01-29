@@ -10,13 +10,15 @@ import {
   CheckCircle2,
   CalendarDays,
   Search,
-  FilterX,
   History,
   Hourglass,
   ListFilter,
   Calendar as CalendarIcon,
   ClipboardList, 
-  Check 
+  Check,
+  Tag,
+  Clock,
+  Activity
 } from "lucide-react"
 
 import { auth } from "@/lib/firebase"
@@ -45,6 +47,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
+// --- TIPOS ---
 interface Agendamento {
   id: number
   dia: number
@@ -80,25 +83,32 @@ export default function MeusAgendamentosPage() {
   const [laboratorios, setLaboratorios] = React.useState<Sala[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   
+  // FILTROS
   const [searchText, setSearchText] = React.useState("")
   const [filterType, setFilterType] = React.useState<"all" | "single" | "series">("all")
   const [filterLab, setFilterLab] = React.useState<string>("all")
   const [filterTurno, setFilterTurno] = React.useState<string>("all")
+  const [filterStatus, setFilterStatus] = React.useState<string>("todos")
   const [filterDate, setFilterDate] = React.useState<Date | undefined>(undefined)
 
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
 
+  // MODAL CHECKLIST
   const [isReportOpen, setIsReportOpen] = React.useState(false)
   const [reportLoading, setReportLoading] = React.useState(false) 
   const [reportData, setReportData] = React.useState<{equipamentos: any[], dadosAgendamento: any} | null>(null)
 
+  // 1. AUTH
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const infoBanco = await getDadosUsuarioSidebar(user.uid)
+          const rawResponse = await getDadosUsuarioSidebar(user.uid)
+          const infoBanco = Array.isArray(rawResponse) ? rawResponse[0] : rawResponse;
+
           if (infoBanco) {
-            setCurrentUser({ nome: infoBanco.nomeUsuario, email: user.email || "" })
+            const nomeCorreto = (infoBanco as any).nome || (infoBanco as any).nomeUsuario || (infoBanco as any).nome_usuario || "Usuário";
+            setCurrentUser({ nome: nomeCorreto, email: user.email || "" })
           }
         } catch (error) { console.error(error) }
       }
@@ -106,6 +116,7 @@ export default function MeusAgendamentosPage() {
     return () => unsubscribe()
   }, [])
 
+  // 2. DATA FETCH
   const fetchData = React.useCallback(async () => {
     if (!currentUser) return 
     setIsLoading(true)
@@ -125,6 +136,7 @@ export default function MeusAgendamentosPage() {
     return laboratorios.find(l => l.id === id)?.nome || `Lab ${id}`
   }, [laboratorios])
 
+  // 3. LOGICA CHECKLIST
   const handleOpenReport = async (itemOrGroup: Agendamento | GroupedItem, isSeries: boolean) => {
       setIsReportOpen(true);
       setReportLoading(true); 
@@ -199,18 +211,23 @@ export default function MeusAgendamentosPage() {
       }
   }
 
+  // 4. LISTA E ORDENAÇÃO
   const organizedList = React.useMemo(() => {
-  const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
     
+    // Filtros
     const filtered = agendamentos.filter(item => {
         const searchLower = searchText.toLowerCase()
         const labName = getLabName(item.labId).toLowerCase()
         const matchSearch = item.disciplina?.toLowerCase().includes(searchLower) || item.observacao?.toLowerCase().includes(searchLower) || labName.includes(searchLower)
+        
         if (!matchSearch) return false
         if (filterType === "single" && item.groupId) return false
         if (filterType === "series" && !item.groupId) return false
         if (filterLab !== "all" && String(item.labId) !== filterLab) return false
         if (filterTurno !== "all" && item.periodo !== filterTurno) return false
+        if (filterStatus !== "todos" && item.status !== filterStatus) return false
+        
         if (filterDate) {
             if (item.dia !== filterDate.getDate() || item.mes !== filterDate.getMonth() || item.ano !== filterDate.getFullYear()) return false
         }
@@ -222,7 +239,6 @@ export default function MeusAgendamentosPage() {
     const processedGroupIds = new Set<string>()
     
     filtered.forEach(item => { if (item.groupId) { if (!groups[item.groupId]) groups[item.groupId] = []; groups[item.groupId].push(item) } })
-    
     filtered.forEach(item => {
         const itemDate = new Date(item.ano, item.mes, item.dia)
         const isItemPast = itemDate < today
@@ -248,12 +264,10 @@ export default function MeusAgendamentosPage() {
     })
     
     return result.sort((a, b) => {
-
         const getStatus = (item: GroupedItem) => {
             if (item.type === 'single') return item.data.status;
             return item.primaryStatus;
         }
-
         const statusA = getStatus(a);
         const statusB = getStatus(b);
 
@@ -271,16 +285,18 @@ export default function MeusAgendamentosPage() {
             return scoreA - scoreB;
         }
 
-        const getDate = (item: GroupedItem) => item.type === 'single' ? new Date(item.data.ano, item.data.mes, item.data.dia).getTime() : new Date(item.items[0].ano, item.items[0].mes, item.items[0].dia).getTime()
+        const getDate = (item: GroupedItem) => item.type === 'single' 
+            ? new Date(item.data.ano, item.data.mes, item.data.dia).getTime() 
+            : new Date(item.items[0].ano, item.items[0].mes, item.items[0].dia).getTime()
         
-        if (scoreA === 4) return getDate(b) - getDate(a); 
+        if (scoreA >= 3) return getDate(b) - getDate(a); 
         return getDate(a) - getDate(b);
     })
 
-  }, [agendamentos, searchText, filterType, filterLab, filterTurno, filterDate, getLabName])
+  }, [agendamentos, searchText, filterType, filterLab, filterTurno, filterDate, filterStatus, getLabName])
 
   const toggleGroup = (groupId: string) => setExpandedGroups(prev => prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId])
-  const handleResetFilters = () => { setSearchText(""); setFilterType("all"); setFilterLab("all"); setFilterTurno("all"); setFilterDate(undefined) }
+  const handleResetFilters = () => { setSearchText(""); setFilterType("all"); setFilterLab("all"); setFilterTurno("all"); setFilterStatus("todos"); setFilterDate(undefined) }
   
   const periodColors = { Manhã: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400", Tarde: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400", Noite: "bg-zinc-800 text-zinc-100 border-zinc-700 dark:bg-zinc-700" }
 
@@ -323,7 +339,7 @@ export default function MeusAgendamentosPage() {
                     <div className="flex-1 p-4 flex flex-col justify-center gap-2">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                             {isDone ? (
-                                <Badge variant="outline" className="bg-zinc-100 text-zinc-500 border-zinc-200 flex items-center gap-1">
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 flex items-center gap-1">
                                     <Check className="h-3 w-3" /> Concluído
                                 </Badge>
                             ) : isPast ? (
@@ -371,12 +387,12 @@ export default function MeusAgendamentosPage() {
                             )}
                         </div>
 
-                        {item.observacao && (
-                            <div className="mt-1 text-sm bg-zinc-50 dark:bg-zinc-900 text-zinc-600 p-2 rounded-md border border-zinc-100 flex gap-2 items-start">
-                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span className="break-all line-clamp-2">{renderSmartText(item.observacao, 140, "Observação")}</span>
-                            </div>
-                        )}
+                        <div className="mt-1 text-sm bg-zinc-50 dark:bg-zinc-900 text-zinc-600 p-2 rounded-md border border-zinc-100 flex gap-2 items-start">
+                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                            <span className="break-all line-clamp-2">
+                                {item.observacao ? renderSmartText(item.observacao, 140, "Observação") : <span className="text-muted-foreground/60 italic">Nenhuma observação geral.</span>}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </CardContent>
@@ -384,6 +400,7 @@ export default function MeusAgendamentosPage() {
      )
   }
 
+  // --- RENDER ---
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -391,7 +408,7 @@ export default function MeusAgendamentosPage() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" /><Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Minha Agenda</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+            <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink >Agendamento</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Minha Agenda</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
           </div>
         </header>
 
@@ -401,15 +418,75 @@ export default function MeusAgendamentosPage() {
             {currentUser && <Badge variant="outline" className="px-3 py-1 text-sm bg-background flex items-center gap-2"><User className="h-3 w-3"/> {currentUser.nome}</Badge>}
           </div>
 
-          {/* FILTROS */}
+          {/* FILTROS - TUDO NA MESMA LINHA */}
           <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border shadow-sm space-y-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                  <div className="relative flex-1"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Pesquisar..." className="pl-9 bg-zinc-50 dark:bg-zinc-950" value={searchText} onChange={(e) => setSearchText(e.target.value)} /></div>
-                  <Select value={filterType} onValueChange={(val:any) => setFilterType(val)}><SelectTrigger className="w-full md:w-[140px] bg-zinc-50"><SelectValue placeholder="Tipo" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="single">Únicos</SelectItem><SelectItem value="series">Séries</SelectItem></SelectContent></Select>
-                  <Select value={filterLab} onValueChange={setFilterLab}><SelectTrigger className="w-full md:w-[180px] bg-zinc-50"><SelectValue placeholder="Laboratório" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{laboratorios.map(lab => (<SelectItem key={lab.id} value={String(lab.id)}>{lab.nome}</SelectItem>))}</SelectContent></Select>
-                  <Select value={filterTurno} onValueChange={setFilterTurno}><SelectTrigger className="w-full md:w-[140px] bg-zinc-50"><SelectValue placeholder="Turno" /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="Manhã">Manhã</SelectItem><SelectItem value="Tarde">Tarde</SelectItem><SelectItem value="Noite">Noite</SelectItem></SelectContent></Select>
-                  <Popover><PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full md:w-[180px] justify-start bg-zinc-50", !filterDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{filterDate ? format(filterDate, "dd/MM/yyyy") : <span>Data específica</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={filterDate} onSelect={setFilterDate} initialFocus locale={ptBR} /></PopoverContent></Popover>
-                  {(searchText || filterType !== 'all' || filterLab !== 'all' || filterTurno !== 'all' || filterDate) && (<Button variant="ghost" size="icon" onClick={handleResetFilters}><FilterX className="h-4 w-4 text-red-500" /></Button>)}
+              <div className="flex flex-col md:flex-row gap-3 flex-wrap items-center">
+                  
+                  {/* PESQUISA */}
+                  <div className="relative w-full md:flex-1 min-w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input placeholder="Pesquisar..." className="pl-9 bg-zinc-50 dark:bg-zinc-950 h-9" value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                  </div>
+
+                  {/* TIPO */}
+                  <Select value={filterType} onValueChange={(val:any) => setFilterType(val)}>
+                      <SelectTrigger className="w-full md:w-[130px] bg-zinc-50 h-9 px-3">
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Tipo" />
+                          </div>
+                      </SelectTrigger>
+                      <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="single">Únicos</SelectItem><SelectItem value="series">Séries</SelectItem></SelectContent>
+                  </Select>
+
+                  {/* LABORATÓRIO */}
+                  <Select value={filterLab} onValueChange={setFilterLab}>
+                      <SelectTrigger className="w-full md:w-[160px] bg-zinc-50 h-9 px-3">
+                          <div className="flex items-center gap-2">
+                            <FlaskConical className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Laboratório" />
+                          </div>
+                      </SelectTrigger>
+                      <SelectContent><SelectItem value="all">Todos</SelectItem>{laboratorios.map(lab => (<SelectItem key={lab.id} value={String(lab.id)}>{lab.nome}</SelectItem>))}</SelectContent>
+                  </Select>
+
+                  {/* TURNO */}
+                  <Select value={filterTurno} onValueChange={setFilterTurno}>
+                      <SelectTrigger className="w-full md:w-[130px] bg-zinc-50 h-9 px-3">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Turno" />
+                          </div>
+                      </SelectTrigger>
+                      <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="Manhã">Manhã</SelectItem><SelectItem value="Tarde">Tarde</SelectItem><SelectItem value="Noite">Noite</SelectItem></SelectContent>
+                  </Select>
+
+                  {/* STATUS */}
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full md:w-[140px] bg-zinc-50 h-9 px-3">
+                        <div className="flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <SelectValue placeholder="Status" />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="confirmado">Aprovado</SelectItem>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="concluido">Concluído</SelectItem>
+                    </SelectContent>
+                 </Select>
+
+                  {/* DATA */}
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant={"outline"} className={cn("w-full md:w-[140px] justify-start bg-zinc-50 h-9 px-3 font-normal", !filterDate && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                              <span className="truncate">{filterDate ? format(filterDate, "dd/MM/yyyy") : "Todos"}</span>
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={filterDate} onSelect={setFilterDate} initialFocus locale={ptBR} /></PopoverContent>
+                  </Popover>
               </div>
           </div>
 
@@ -436,13 +513,13 @@ export default function MeusAgendamentosPage() {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h3 className={cn("font-semibold text-lg", isHistory && "text-muted-foreground")}>Agendamento em Série</h3>
                                         {entry.primaryStatus === 'concluido' ? (
-                                            <Badge variant="outline" className="bg-zinc-100 text-zinc-500 border-zinc-200 gap-1"><Check className="h-3 w-3"/> Concluído</Badge>
+                                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 gap-1"><Check className="h-3 w-3"/> Concluído</Badge>
                                         ) : entry.primaryStatus === 'confirmado' ? (
                                             <Badge className="bg-emerald-600 hover:bg-emerald-700">Aprovado</Badge>
                                         ) : (
                                             <Badge className="bg-orange-500 hover:bg-orange-600">Pendente</Badge>
                                         )}
-                                        <Badge variant="secondary" className="border">{entry.items[0].periodo}</Badge>
+                                        <Badge variant="secondary" className={cn("border", periodColors[entry.items[0].periodo])}>{entry.items[0].periodo}</Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                                         <CalendarIcon className="h-3.5 w-3.5 mr-2"/> {format(new Date(entry.items[0].ano, entry.items[0].mes, entry.items[0].dia), "dd/MM")} à {format(new Date(entry.items[entry.items.length-1].ano, entry.items[entry.items.length-1].mes, entry.items[entry.items.length-1].dia), "dd/MM")}
@@ -451,7 +528,6 @@ export default function MeusAgendamentosPage() {
                                 </div>
                             </div>
                             
-                            {/* BOTÃO NA SÉRIE (NOVA POSIÇÃO) */}
                             <div className="flex items-center gap-3 self-end sm:self-center">
                                 {canReportSeries && (
                                     <Button onClick={(e) => { e.stopPropagation(); handleOpenReport(entry, true); }} className="bg-amber-600 hover:bg-amber-700 text-white shadow-sm h-8 px-3 text-xs font-bold uppercase tracking-wide ml-auto sm:self-center">
@@ -468,16 +544,9 @@ export default function MeusAgendamentosPage() {
           )}
         </div>
 
-{/* MODAL DO FORMULÁRIO */}
         <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-            {/* [&>button]:hidden ESCONDE O BOTÃO DE FECHAR PADRÃO DO MODAL */}
             <DialogContent className="max-w-3xl max-h-[95vh] h-auto p-0 flex flex-col bg-white dark:bg-zinc-950 overflow-hidden gap-0 [&>button]:hidden">
-                
-                <div className="sr-only">
-                    <DialogTitle>Conferência</DialogTitle>
-                    <DialogDescription>Checklist de equipamentos</DialogDescription>
-                </div>
-
+                <div className="sr-only"><DialogTitle>Conferência</DialogTitle><DialogDescription>Checklist de equipamentos</DialogDescription></div>
                 <div className="flex-1 flex flex-col overflow-hidden w-full p-0">
                     {reportLoading ? (
                         <div className="flex flex-col items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="mt-2 text-muted-foreground">Carregando...</span></div>

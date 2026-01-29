@@ -22,7 +22,8 @@ import {
 
 export function NavMain({
   items,
-  label = "Menu" // ADICIONADO: Propriedade label com valor padrão
+  label = "Menu",
+  onToggle // ADICIONADO: Propriedade label com valor padrão
 }: {
   items: {
     title: string
@@ -34,7 +35,8 @@ export function NavMain({
       url: string
     }[]
   }[],
-  label?: string // ADICIONADO: Tipagem
+  label?: string 
+  onToggle?: (title: string, isOpen: boolean) => void
 }) {
   const [isMounted, setIsMounted] = useState(false)
 
@@ -55,7 +57,8 @@ export function NavMain({
           <Collapsible
             key={item.title}
             asChild
-            defaultOpen={item.isActive}
+            open={item.isActive}
+            onOpenChange={(isOpen) => onToggle && onToggle(item.title, isOpen)}
             className="group/collapsible"
           >
             <SidebarMenuItem>

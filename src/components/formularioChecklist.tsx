@@ -36,6 +36,8 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
     equipamentos: true
   })
 
+  const tudoMarcado = checks.limpeza && (hasEquipments ? checks.equipamentos : true)
+
   const [dadosSala, setDadosSala] = React.useState({
     status: 'conforme' as 'conforme' | 'problema', 
     observacaoGeral: ""
@@ -48,11 +50,16 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
       }
   }, [hasEquipments])
 
-  const handleCheckChange = (field: 'limpeza' | 'equipamentos', value: boolean) => {
-      setChecks(prev => ({ ...prev, [field]: value }))
-      if (!value) {
+  React.useEffect(() => {
+      if (tudoMarcado) {
+          setDadosSala(prev => ({ ...prev, status: 'conforme' }))
+      } else {
           setDadosSala(prev => ({ ...prev, status: 'problema' }))
       }
+  }, [tudoMarcado])
+
+  const handleCheckChange = (field: 'limpeza' | 'equipamentos', value: boolean) => {
+      setChecks(prev => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = () => {
@@ -114,7 +121,7 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
                         <div className="flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                             <span className="text-xs font-bold text-violet-900 dark:text-violet-200 uppercase">
-                                Série ({dadosAgendamento.count} itens)
+                                Série ({dadosAgendamento.count} dias)
                             </span>
                         </div>
                         <span className="text-[10px] font-mono text-violet-700 dark:text-violet-400">
@@ -161,10 +168,7 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
                 {step === 2 && (
                     <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
                           
-                        {/* PARTE A: CHECKBOXES */}
                         <div className="flex flex-col gap-3">
-                              
-                             {/* Checkbox Limpeza */}
                              <div 
                                 onClick={() => handleCheckChange('limpeza', !checks.limpeza)}
                                 className={cn(
@@ -192,7 +196,6 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
                                 </div>
                              </div>
 
-                             {/* Checkbox Equipamentos */}
                              <div 
                                 onClick={() => hasEquipments && handleCheckChange('equipamentos', !checks.equipamentos)}
                                 className={cn(
@@ -228,12 +231,14 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
                         <div className="grid grid-cols-2 gap-3 pt-2">
                                 <button
                                     type="button"
+                                    disabled={!tudoMarcado}
                                     onClick={() => setDadosSala({ ...dadosSala, status: 'conforme' })}
                                     className={cn(
                                         "flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 transition-all h-20 bg-white dark:bg-zinc-900",
                                         dadosSala.status === 'conforme'
                                             ? "border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50/10"
-                                            : "border-zinc-100 hover:border-zinc-300 text-muted-foreground"
+                                            : "border-zinc-100 text-muted-foreground",
+                                        !tudoMarcado && "opacity-50 cursor-not-allowed border-zinc-100 bg-zinc-50"
                                     )}
                                 >
                                     <CheckCircle2 className="h-6 w-6" /> 
@@ -242,12 +247,14 @@ export function ChecklistForm({ equipamentos = [], onSubmit, onClose, isSubmitti
 
                                 <button
                                     type="button"
+                                    disabled={tudoMarcado}
                                     onClick={() => setDadosSala({ ...dadosSala, status: 'problema' })}
                                     className={cn(
                                         "flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 transition-all h-20 bg-white dark:bg-zinc-900",
                                         dadosSala.status === 'problema'
                                             ? "border-red-500 text-red-700 dark:text-red-400 bg-red-50/10"
-                                            : "border-zinc-100 hover:border-zinc-300 text-muted-foreground"
+                                            : "border-zinc-100 text-muted-foreground",
+                                        tudoMarcado && "opacity-50 cursor-not-allowed border-zinc-100 bg-zinc-50"
                                     )}
                                 >
                                     <AlertTriangle className="h-6 w-6" /> 

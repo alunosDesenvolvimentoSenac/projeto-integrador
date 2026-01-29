@@ -1,4 +1,4 @@
-import { pgTable, index, foreignKey, bigint, timestamp, text, varchar, integer, boolean, unique, jsonb, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, bigint, timestamp, text, varchar, integer, boolean, unique, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const statusAgendamento = pgEnum("status_agendamento", ['pendente', 'confirmado', 'concluido'])
@@ -168,23 +168,4 @@ export const usuarios = pgTable("usuarios", {
 		}),
 	unique("usuarios_uid_firebase_key").on(table.uidFirebase),
 	unique("usuarios_email_key").on(table.email),
-]);
-
-export const checklistItens = pgTable("checklist_itens", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	idChecklistItem: bigint("id_checklist_item", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "checklist_itens_id_checklist_item_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	idChecklist: bigint("id_checklist", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	idEquipamento: bigint("id_equipamento", { mode: "number" }).notNull(),
-	quantidadeCorreta: boolean("quantidade_correta").default(true).notNull(),
-	possuiAvaria: boolean("possui_avaria").default(false).notNull(),
-	detalhesAvaria: jsonb("detalhes_avaria"),
-	observacao: text(),
-}, (table) => [
-	foreignKey({
-			columns: [table.idChecklist],
-			foreignColumns: [checklists.idChecklist],
-			name: "fk_itens_checklist"
-		}).onDelete("cascade"),
 ]);

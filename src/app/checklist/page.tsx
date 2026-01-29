@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Suspense } from "react"
 import {
   getRelatoriosPendentesAction,
   getEquipamentosDaSalaAction,
@@ -36,7 +35,7 @@ import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import Image from "next/image"
 
-function RelatoriosContent() {
+export default function RelatoriosPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -93,8 +92,8 @@ function RelatoriosContent() {
   }, [pendentes]);
 
   const historicoAgrupado = React.useMemo(() => {
-  const grouped: any[] = [];
-  const map = new Map();
+    const grouped: any[] = [];
+    const map = new Map();
 
     historico.forEach(item => {
       if (item.groupId) {
@@ -278,11 +277,11 @@ function RelatoriosContent() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink >Checklists</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">Sistema</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Histórico</BreadcrumbPage>
+                <BreadcrumbPage>Gestão de Relatórios</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -512,7 +511,6 @@ function RelatoriosContent() {
                     </div>
                   )}
 
-                  {/* BANNER PRINCIPAL DO RELATÓRIO - CORRIGIDO PARA OLHAR OS DOIS STATUS */}
                   <div className={cn("flex items-center gap-3 p-4 rounded-lg mb-6 border", 
                     (viewReport.materialOk && viewReport.limpezaOk)
                     ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
@@ -557,14 +555,6 @@ function RelatoriosContent() {
                                   Qtd: {item.quantidade}
                                 </span>
                               </div>
-                              {item.status === 'avaria' && item.tipoAvaria && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-bold text-red-700 uppercase">Problema:</span>
-                                  <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                                    {item.tipoAvaria}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -573,7 +563,6 @@ function RelatoriosContent() {
                   )}
 
                   <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Card Limpeza */}
                       <div className={cn("flex items-center gap-3 p-3 rounded-lg border", viewReport.limpezaOk ? "bg-white border-zinc-200" : "bg-red-50 border-red-200")}>
                           <div className={cn("p-2 rounded-md shrink-0", viewReport.limpezaOk ? "bg-zinc-100" : "bg-red-100")}>
                               <Brush className={cn("h-4 w-4", viewReport.limpezaOk ? "text-zinc-500" : "text-red-500")} />
@@ -586,7 +575,6 @@ function RelatoriosContent() {
                           </div>
                       </div>
 
-                      {/* Card Equipamentos */}
                       <div className={cn("flex items-center gap-3 p-3 rounded-lg border", viewReport.materialOk ? "bg-white border-zinc-200" : "bg-red-50 border-red-200")}>
                           <div className={cn("p-2 rounded-md shrink-0", viewReport.materialOk ? "bg-zinc-100" : "bg-red-100")}>
                               <Box className={cn("h-4 w-4", viewReport.materialOk ? "text-zinc-500" : "text-red-500")} />
@@ -618,14 +606,5 @@ function RelatoriosContent() {
 
       </SidebarInset>
     </SidebarProvider>
-  )
-}
-
-export default function RelatoriosPage() {
-  return (
-    // O fallback pode ser qualquer indicador de carregamento
-    <Suspense fallback={<div className="flex h-screen items-center justify-center">Carregando...</div>}>
-      <RelatoriosContent />
-    </Suspense>
   )
 }

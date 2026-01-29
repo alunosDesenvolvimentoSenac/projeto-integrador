@@ -1,26 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
+import { UserProvider } from "@/components/user-provider"; // <--- IMPORTAR
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sistema de Agendamentos - Senac Minas",
-  description: "Sistema de Agendamento de Laboratórios",
+  title: "Projeto Integrador",
+  description: "Sistema de Agendamento Senac",
 };
-
-const inter = Inter({ // Added Inter font configuration
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,
@@ -29,11 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-br">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
-      >
-        {children}
-
+      <body className={inter.className}>
+        {/* O UserProvider envolve tudo */}
+        <UserProvider>
+            {children}
+            <Toaster richColors />
+        </UserProvider>
       </body>
     </html>
   );

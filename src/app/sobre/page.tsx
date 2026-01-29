@@ -15,8 +15,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Info, Users, GraduationCap, Code2, Database, SearchCheck, Briefcase } from "lucide-react"
 
@@ -30,7 +29,7 @@ const equipe = [
   },
   { 
     papel: "Product Owner", 
-    nome: "Paulo Moreno", 
+    nome: "Paulo Henrique Moreno Dionizio", 
     icon: Briefcase,
     color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
   },
