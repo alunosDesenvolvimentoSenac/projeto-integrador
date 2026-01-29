@@ -5,15 +5,15 @@ import { auth } from "@/lib/firebase"
 import { onAuthStateChanged, User } from "firebase/auth"
 import { getDadosUsuarioSidebar } from "@/app/actions/auth"
 
-// Definindo o formato dos dados
 interface UserContextData {
-  user: User | null; // Usuário do Firebase
+  user: User | null;
   userData: {
     name: string;
     email: string;
     avatar: string;
     role: string;
-    id: number; // Adicionei o ID aqui pois é usado no dashboard
+    id: number;
+    unidadeId?: number;
   };
   isAdmin: boolean;
   isLoading: boolean;
@@ -31,7 +31,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     email: "",
     avatar: "",
     role: "",
-    id: 0
+    id: 0,
+    unidadeId: 0
   })
 
   useEffect(() => {
@@ -40,19 +41,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser)
         
         try {
-          // Busca dados no banco (Server Action)
-          const infoBanco = await getDadosUsuarioSidebar(firebaseUser.uid)
+          const response = await getDadosUsuarioSidebar(firebaseUser.uid)
+          // Forçamos 'any' para ler qualquer propriedade que vier do banco
+          const infoBanco = response as any;
           
           if (infoBanco) {
-            const role = infoBanco.cargo || "Usuário"
-            const isAdminCheck = role === "Administrador" || infoBanco.id_perfil === 1
+            // Tenta todas as variações possíveis de nomes de coluna
+            const nomeReal = infoBanco.nome || infoBanco.nomeUsuario || infoBanco.nome_usuario || firebaseUser.displayName || "Usuário";
+            const perfilReal = infoBanco.descricaoPerfil || infoBanco.descricao_perfil || infoBanco.cargo || "Usuário";
+            
+            const isAdminCheck = 
+                infoBanco.isAdmin === true || 
+                infoBanco.idPerfil === 1 || 
+                perfilReal === "Administrador";
 
             setUserData({
-              name: infoBanco.nomeUsuario || firebaseUser.displayName || "Usuário",
-              email: firebaseUser.email || "",
+              name: nomeReal,
+              email: infoBanco.email || firebaseUser.email || "",
               avatar: firebaseUser.photoURL || "",
-              role: role,
-              id: Number(infoBanco.idUsuario || infoBanco.id)
+              role: perfilReal,
+              id: Number(infoBanco.idUsuario || infoBanco.id),
+              unidadeId: Number(infoBanco.idUnidade)
             })
             setIsAdmin(isAdminCheck)
           }
@@ -60,10 +69,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           console.error("Erro ao buscar dados do usuário:", error)
         }
       } else {
-        // Reset se deslogar
         setUser(null)
         setIsAdmin(false)
-        setUserData({ name: "Visitante", email: "", avatar: "", role: "", id: 0 })
+        setUserData({ name: "Visitante", email: "", avatar: "", role: "", id: 0, unidadeId: 0 })
       }
       
       setIsLoading(false)
@@ -79,5 +87,4 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Hook personalizado para usar os dados em qualquer lugar
 export const useUser = () => useContext(UserContext)

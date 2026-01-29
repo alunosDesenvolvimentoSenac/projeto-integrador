@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react" // 1. Importação do Suspense
 import { useSearchParams, useRouter } from "next/navigation"
 import {
   getRelatoriosPendentesAction,
@@ -35,7 +36,8 @@ import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import Image from "next/image"
 
-export default function RelatoriosPage() {
+// 2. Renomeado de RelatoriosPage para RelatoriosContent e removido o 'export default'
+function RelatoriosContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -606,5 +608,18 @@ export default function RelatoriosPage() {
 
       </SidebarInset>
     </SidebarProvider>
+  )
+}
+
+// 3. Novo export default que engloba o conteúdo com o Suspense
+export default function RelatoriosPage() {
+  return (
+    <Suspense fallback={
+        <div className="flex h-screen w-full items-center justify-center">
+            <RefreshCcw className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    }>
+      <RelatoriosContent />
+    </Suspense>
   )
 }

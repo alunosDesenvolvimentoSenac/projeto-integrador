@@ -23,7 +23,7 @@ import {
 export function NavMain({
   items,
   label = "Menu",
-  onToggle // ADICIONADO: Propriedade label com valor padrão
+  onToggle 
 }: {
   items: {
     title: string
@@ -35,7 +35,7 @@ export function NavMain({
       url: string
     }[]
   }[],
-  label?: string 
+  label?: string, // <--- ADICIONEI A VÍRGULA AQUI QUE FALTAVA
   onToggle?: (title: string, isOpen: boolean) => void
 }) {
   const [isMounted, setIsMounted] = useState(false)
@@ -50,7 +50,6 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      {/* ALTERADO: Usa a prop label */}
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (

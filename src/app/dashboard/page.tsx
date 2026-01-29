@@ -495,7 +495,7 @@ export default function DashboardView() {
         <DayDetailsDialog isOpen={!!selectedDayDetails} onClose={() => setSelectedDayDetails(null)} data={selectedDayDetails} monthName={monthName} onAddClick={(periodo: Periodo) => handleOpenAddForm(periodo, false)} onDelete={handleDeleteAppointment} onApprove={handleApproveAppointment} currentUser={currentUser} />
         <AppointmentFormDialog isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} formData={formInitialDate} onSave={handleSaveAppointment} laboratorios={laboratorios} currentUser={currentUser} usersOptions={usersOptions} isRangeMode={isRangeMode} />
       </SidebarInset>
-      <Toaster richColors position="bottom-right" className="z-[99999]" />
+      <Toaster position="bottom-right" className="z-[99999]" />
     </SidebarProvider>
   )
 }

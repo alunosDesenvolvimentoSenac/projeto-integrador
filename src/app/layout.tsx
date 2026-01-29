@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
-import { UserProvider } from "@/components/user-provider"; // <--- IMPORTAR
+// 1. ALTERAÇÃO AQUI: Importe do componente UI que criamos acima, e NÃO direto da biblioteca 'sonner'
+import { Toaster } from "@/components/ui/sonner"; 
+import { UserProvider } from "@/components/user-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Projeto Integrador",
+  title: "Sistema de Agendamento Senac",
   description: "Sistema de Agendamento Senac",
 };
 
@@ -19,10 +20,18 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body className={inter.className}>
-        {/* O UserProvider envolve tudo */}
         <UserProvider>
             {children}
-            <Toaster richColors />
+            {/* 2. ALTERAÇÃO AQUI: 
+               - theme="dark": Força o fundo preto e texto branco.
+               - richColors={false}: Garante o visual neutro (sem fundos verdes/vermelhos).
+            */}
+            <Toaster 
+              theme="dark" 
+              richColors={false} 
+              position="bottom-right" 
+              className="z-[99999]" 
+            />
         </UserProvider>
       </body>
     </html>
