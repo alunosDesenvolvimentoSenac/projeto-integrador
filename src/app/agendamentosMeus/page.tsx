@@ -2,23 +2,9 @@
 
 import * as React from "react"
 import { 
-  User, 
-  FlaskConical, 
-  Loader2, 
-  Layers, 
-  AlertCircle,
-  CheckCircle2,
-  CalendarDays,
-  Search,
-  History,
-  Hourglass,
-  ListFilter,
-  Calendar as CalendarIcon,
-  ClipboardList, 
-  Check,
-  Tag,
-  Clock,
-  Activity
+  User, FlaskConical, Loader2, Layers, AlertCircle, CheckCircle2,
+  CalendarDays, Search, History, Hourglass, ListFilter,
+  Calendar as CalendarIcon, ClipboardList, Check, Tag, Clock, Activity, FileEdit
 } from "lucide-react"
 
 import { auth } from "@/lib/firebase"
@@ -26,9 +12,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { getDadosUsuarioSidebar } from "@/app/actions/auth"
 import { getAgendamentosAction, getSalasAction } from "@/app/actions/agendamentos"
 import { salvarChecklistAction, getEquipamentosDaSalaAction } from "@/app/actions/checklist" 
-
 import { ChecklistForm } from "@/components/formularioChecklist"
-
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -47,7 +31,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
-// --- TIPOS ---
+// --- TYPES ---
 interface Agendamento {
   id: number
   dia: number
@@ -138,54 +122,50 @@ export default function MeusAgendamentosPage() {
 
   // 3. LOGICA CHECKLIST
   const handleOpenReport = async (itemOrGroup: Agendamento | GroupedItem, isSeries: boolean) => {
-    setIsReportOpen(true);
-    setReportLoading(true);
+      setIsReportOpen(true);
+      setReportLoading(true); 
 
-    let targetLabId: number | undefined;
-    let agendamentoInfo: any = {};
+      let targetLabId: number | undefined;
+      let agendamentoInfo: any = {};
 
-    if (isSeries) {
-        const group = itemOrGroup as any;
-        const firstItem = group.items[0];
-        targetLabId = firstItem.labId;
-        agendamentoInfo = {
-            isSeries: true,
-            count: group.items.length,
-            dateStart: new Date(group.items[0].ano, group.items[0].mes, group.items[0].dia),
-            dateEnd: new Date(group.items[group.items.length - 1].ano, group.items[group.items.length - 1].mes, group.items[group.items.length - 1].dia),
-            groupId: group.id
-        };
-    } else {
-        const item = itemOrGroup as Agendamento;
-        targetLabId = item.labId;
-        agendamentoInfo = {
-            isSeries: false,
-            dateStart: new Date(item.ano, item.mes, item.dia),
-            idAgendamento: item.id
-        };
-    }
+      if (isSeries) {
+          const group = itemOrGroup as any;
+          const firstItem = group.items[0];
+          targetLabId = firstItem.labId;
+          agendamentoInfo = {
+              isSeries: true,
+              count: group.items.length,
+              dateStart: new Date(group.items[0].ano, group.items[0].mes, group.items[0].dia),
+              dateEnd: new Date(group.items[group.items.length - 1].ano, group.items[group.items.length - 1].mes, group.items[group.items.length - 1].dia),
+              groupId: group.id
+          };
+      } else {
+          const item = itemOrGroup as Agendamento;
+          targetLabId = item.labId;
+          agendamentoInfo = { 
+              isSeries: false, 
+              dateStart: new Date(item.ano, item.mes, item.dia), 
+              idAgendamento: item.id 
+          };
+      }
 
-    try {
-        if (targetLabId) {
-            const equipamentos = await getEquipamentosDaSalaAction(targetLabId);
-            
-            // --- ALTERAÇÃO AQUI: FILTRAR APENAS OS ATIVOS ---
-            const equipamentosAtivos = equipamentos 
-                ? equipamentos.filter((eq: any) => eq.ativo === true) 
-                : [];
-            
-            setReportData({ equipamentos: equipamentosAtivos, dadosAgendamento: agendamentoInfo });
-        } else {
-            setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
-        }
-    } catch (error) {
-        console.error("Erro ao buscar equipamentos:", error);
-        toast.error("Erro ao carregar equipamentos da sala.");
-        setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
-    } finally {
-        setReportLoading(false);
-    }
-}
+      try {
+          if (targetLabId) {
+             const equipamentos = await getEquipamentosDaSalaAction(targetLabId);
+             // FILTRO: Apenas ativos (como solicitado no frontend)
+             const equipamentosAtivos = equipamentos ? equipamentos.filter((eq: any) => eq.ativo === true) : [];
+             setReportData({ equipamentos: equipamentosAtivos, dadosAgendamento: agendamentoInfo });
+          } else {
+             setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
+          }
+      } catch (error) {
+          console.error("Erro ao buscar equipamentos:", error);
+          toast.error("Erro ao carregar equipamentos da sala.");
+          setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
+      } finally {
+          setReportLoading(false);
+      }
+  }
 
   const handleSubmitReport = async (data: any) => {
       if (!reportData) return;
@@ -203,10 +183,11 @@ export default function MeusAgendamentosPage() {
           const result = await salvarChecklistAction(payload);
 
           if (result.success) {
-              toast.success("Conferência realizada e salva!");
+              toast.success("Checklist concluído e salvo!");
               setIsReportOpen(false);
               setReportData(null);
-              fetchData(); 
+              // Recarregar a página para atualizar o status do badge
+              window.location.reload(); 
           } else {
               console.error(result.error);
               toast.error("Erro ao salvar no banco.");
@@ -277,9 +258,10 @@ export default function MeusAgendamentosPage() {
         const statusA = getStatus(a);
         const statusB = getStatus(b);
 
+        // Ordem: Confirmado (Checklist Aberto) > Pendente > Concluido > Histórico
         const getScore = (item: GroupedItem, status: string) => {
             if (item.isHistory) return 4;
-            if (status === 'confirmado') return 1;
+            if (status === 'confirmado') return 0; 
             if (status === 'pendente') return 2;
             return 3;
         }
@@ -353,8 +335,8 @@ export default function MeusAgendamentosPage() {
                                     <History className="h-3 w-3" /> Finalizado
                                 </Badge>
                             ) : item.status === 'confirmado' ? (
-                                <Badge className="bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1">
-                                    <CheckCircle2 className="h-3 w-3" /> Aprovado
+                                <Badge className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1 animate-pulse">
+                                    <FileEdit className="h-3 w-3" /> Checklist Aberto
                                 </Badge>
                             ) : (
                                 <Badge className="bg-orange-500 hover:bg-orange-600 flex items-center gap-1">
@@ -380,15 +362,14 @@ export default function MeusAgendamentosPage() {
                                 )}
                             </div>
 
-                            {/* BOTÃO ALINHADO À DIREITA NA MESMA LINHA */}
                             {canReport && (
                                 <Button 
                                     onClick={() => handleOpenReport(item, false)}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white shadow-sm h-8 px-3 text-xs font-bold uppercase tracking-wide self-start sm:self-center ml-auto"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-8 px-3 text-xs font-bold uppercase tracking-wide self-start sm:self-center ml-auto"
                                     size="sm"
                                 >
-                                    <ClipboardList className="mr-2 h-3.5 w-3.5" />
-                                    Conferência
+                                    <FileEdit className="mr-2 h-3.5 w-3.5" />
+                                    Realizar Checklist
                                 </Button>
                             )}
                         </div>
@@ -477,11 +458,11 @@ export default function MeusAgendamentosPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value="confirmado">Aprovado</SelectItem>
+                        <SelectItem value="confirmado">Checklist Aberto</SelectItem>
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="concluido">Concluído</SelectItem>
                     </SelectContent>
-                 </Select>
+                   </Select>
 
                   {/* DATA */}
                   <Popover>
@@ -521,7 +502,7 @@ export default function MeusAgendamentosPage() {
                                         {entry.primaryStatus === 'concluido' ? (
                                             <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 gap-1"><Check className="h-3 w-3"/> Concluído</Badge>
                                         ) : entry.primaryStatus === 'confirmado' ? (
-                                            <Badge className="bg-emerald-600 hover:bg-emerald-700">Aprovado</Badge>
+                                            <Badge className="bg-blue-600 hover:bg-blue-700">Checklist Aberto</Badge>
                                         ) : (
                                             <Badge className="bg-orange-500 hover:bg-orange-600">Pendente</Badge>
                                         )}
@@ -536,7 +517,7 @@ export default function MeusAgendamentosPage() {
                             
                             <div className="flex items-center gap-3 self-end sm:self-center">
                                 {canReportSeries && (
-                                    <Button onClick={(e) => { e.stopPropagation(); handleOpenReport(entry, true); }} className="bg-amber-600 hover:bg-amber-700 text-white shadow-sm h-8 px-3 text-xs font-bold uppercase tracking-wide ml-auto sm:self-center">
+                                    <Button onClick={(e) => { e.stopPropagation(); handleOpenReport(entry, true); }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-8 px-3 text-xs font-bold uppercase tracking-wide ml-auto sm:self-center">
                                         <ClipboardList className="mr-2 h-3.5 w-3.5" /> Conferir Série
                                     </Button>
                                 )}

@@ -2,12 +2,12 @@
 
 import { db } from "@/db"
 import { agendamentos, checklists, equipamentos, salas, usuarios } from "@/db/migrations/schema"
-import { eq, and, notExists, desc, sql, inArray, lte } from "drizzle-orm" 
+import { eq, and, desc, sql, inArray, lte, or, isNull } from "drizzle-orm" 
 import { revalidatePath } from "next/cache"
 
 // --- 1. BUSCAR RELATÓRIOS PENDENTES ---
+// Retorna agendamentos confirmados que tem checklist 'aberto' ou nenhum checklist
 export async function getRelatoriosPendentesAction() {
-  // 2. Define o momento atual
   const agora = new Date().toISOString(); 
 
   return await db
@@ -24,27 +24,29 @@ export async function getRelatoriosPendentesAction() {
     .from(agendamentos)
     .innerJoin(usuarios, eq(agendamentos.idUsuario, usuarios.idUsuario))
     .innerJoin(salas, eq(agendamentos.idSala, salas.idSala))
+    .leftJoin(checklists, eq(agendamentos.idAgendamento, checklists.idAgendamento))
     .where(
       and(
         eq(agendamentos.status, 'confirmado'),
+        lte(agendamentos.dataHorarioInicio, agora),
         
-        // 3. O PULO DO GATO: Filtra para pegar apenas o que já começou/passou
-        lte(agendamentos.dataHorarioInicio, agora), 
-
-        notExists(
-          db.select().from(checklists).where(eq(checklists.idAgendamento, agendamentos.idAgendamento))
+        // --- CORREÇÃO AQUI ---
+        // Removemos o sql`` e usamos a sintaxe nativa do Drizzle
+        or(
+            isNull(checklists.idChecklist),    // Caso 1: Checklist ainda não existe
+            eq(checklists.status, 'aberto')    // Caso 2: Checklist existe e está aberto
         )
       )
     )
     .orderBy(agendamentos.dataHorarioInicio)
 }
-
 // --- 2. BUSCAR EQUIPAMENTOS DA SALA ---
 export async function getEquipamentosDaSalaAction(idSala: number) {
+  // Retorna todos, o front filtra por 'ativo'
   return await db.select().from(equipamentos).where(eq(equipamentos.idSala, idSala))
 }
 
-// --- 3. SALVAR CHECKLIST ---
+// --- 3. SALVAR CHECKLIST (ATUALIZAÇÃO) ---
 type ChecklistPayload = {
   idAgendamento: number; 
   groupId?: string; 
@@ -57,47 +59,59 @@ type ChecklistPayload = {
 
 export async function salvarChecklistAction(data: ChecklistPayload) {
   try {
-    console.log("Salvando status geral do checklist:", { material: data.materialOk, limpeza: data.limpezaOk });
-
     let idsParaSalvar: number[] = [];
 
+    // Identifica se é um ou uma série
     if (data.groupId) {
         const agendamentosSerie = await db
             .select({ id: agendamentos.idAgendamento })
             .from(agendamentos)
             .where(and(
                 eq(agendamentos.codigoSerie, data.groupId),
-                eq(agendamentos.status, 'confirmado'),
-                notExists(
-                    db.select().from(checklists).where(eq(checklists.idAgendamento, agendamentos.idAgendamento))
-                )
+                eq(agendamentos.status, 'confirmado')
             ));
         
         idsParaSalvar = agendamentosSerie.map(a => a.id);
     } else {
         const id = Number(data.idAgendamento);
-        if (!isNaN(id)) {
-            idsParaSalvar = [id];
-        }
+        if (!isNaN(id)) idsParaSalvar = [id];
     }
 
     if (idsParaSalvar.length === 0) {
-        return { success: false, error: "Nenhum agendamento pendente encontrado." };
+        return { success: false, error: "Nenhum agendamento encontrado." };
     }
 
+    // UPDATE DO CHECKLIST E DO AGENDAMENTO
     for (const idAgendamento of idsParaSalvar) {
-        await db
-          .insert(checklists)
-          .values({
-            idAgendamento: idAgendamento,
-            materialOk: data.materialOk,
-            limpezaOk: data.limpezaOk,
-            observacao: data.observacaoGeral || "",
-            disciplina: data.disciplina,
-            dataChecklist: new Date().toISOString(),
-          });
+        const exists = await db.select().from(checklists).where(eq(checklists.idAgendamento, idAgendamento));
+        
+        if (exists.length > 0) {
+            // ATUALIZA checklist existente (de 'aberto' para 'concluido')
+            await db.update(checklists)
+                .set({
+                    materialOk: data.materialOk,
+                    limpezaOk: data.limpezaOk,
+                    observacao: data.observacaoGeral || "",
+                    disciplina: data.disciplina,
+                    dataChecklist: new Date().toISOString(),
+                    status: 'concluido' // Finaliza
+                })
+                .where(eq(checklists.idAgendamento, idAgendamento));
+        } else {
+            // INSERT de segurança (se não existia por algum motivo)
+            await db.insert(checklists).values({
+                idAgendamento: idAgendamento,
+                materialOk: data.materialOk,
+                limpezaOk: data.limpezaOk,
+                observacao: data.observacaoGeral || "",
+                disciplina: data.disciplina,
+                dataChecklist: new Date().toISOString(),
+                status: 'concluido'
+            });
+        }
     }
 
+    // Marca agendamentos como concluídos
     await db.update(agendamentos)
         .set({ status: 'concluido' }) 
         .where(inArray(agendamentos.idAgendamento, idsParaSalvar));
@@ -131,6 +145,9 @@ type HistoricoFilters = {
 export async function getHistoricoChecklistsAction(filters?: HistoricoFilters) {
   try {
     const conditions = []
+
+    // Só mostra checklists concluídos no histórico
+    conditions.push(eq(checklists.status, 'concluido'));
 
     if (filters?.search) {
       conditions.push(
@@ -176,16 +193,15 @@ export async function getHistoricoChecklistsAction(filters?: HistoricoFilters) {
   }
 }
 
-// --- 6. DETALHES (ATUALIZADO) ---
+// --- 6. DETALHES ---
 export async function getDetalhesDoChecklistAction(idChecklist: number) {
   try {
-    // 1. Busca os dados do checklist e descobre qual é a Sala através do Agendamento
     const dadosGerais = await db
       .select({ 
         observacaoGeral: checklists.observacao,
         limpezaOk: checklists.limpezaOk,
         materialOk: checklists.materialOk,
-        idSala: agendamentos.idSala // <--- Pegamos o ID da sala aqui
+        idSala: agendamentos.idSala
       })
       .from(checklists)
       .innerJoin(agendamentos, eq(checklists.idAgendamento, agendamentos.idAgendamento))
@@ -196,7 +212,6 @@ export async function getDetalhesDoChecklistAction(idChecklist: number) {
 
     const checklist = dadosGerais[0];
 
-    // 2. Busca os equipamentos daquela sala (Inventário atual)
     const equipamentosDaSala = await db
       .select({
         nome: equipamentos.descricao,
@@ -204,18 +219,16 @@ export async function getDetalhesDoChecklistAction(idChecklist: number) {
         quantidade: equipamentos.quantidade,
       })
       .from(equipamentos)
-      .where(eq(equipamentos.idSala, checklist.idSala)); // <--- Filtra pela sala do agendamento
+      .where(eq(equipamentos.idSala, checklist.idSala));
 
     return {
       observacaoGeral: checklist.observacaoGeral ?? "",
       limpezaOk: checklist.limpezaOk,
       materialOk: checklist.materialOk,
-      // Mapeia para o formato que o frontend espera
       itens: equipamentosDaSala.map((item) => ({
         nome: item.nome,
         foto: item.foto,
         quantidade: item.quantidade,
-        // Como não salvamos status individual, retornamos padrão
         status: 'ok', 
         tipoAvaria: '',
         observacao: ''
