@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label" 
 // Importando os componentes do Dialog para o Modal
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import Link from "next/link"
 import {
   Select,
   SelectContent,
@@ -155,66 +148,15 @@ export function UserControls({ unidades, perfis }: UserControlsProps) {
           </Select>
           
           {/* 3. Botão ajustado para abrir o Modal (setIsOpen) ao invés de navegar */}
-          <Button onClick={() => setIsOpen(true)}>
-             Novo Usuário
+          <Button asChild>
+            <Link href="/cadastroUsuarios">
+              Novo Usuário
+            </Link>
           </Button>
         </div>
       </div>
 
-      {/* 4. Modal de Criação Rápida */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-                <DialogTitle>Novo Usuário</DialogTitle>
-                <DialogDescription>Preencha os dados para cadastro rápido.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                    <Label>Nome</Label>
-                    <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                    <Label>Email</Label>
-                    <Input value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
-                </div>
-                
-                {/* Campo de Departamento */}
-                <div className="grid gap-2">
-                    <Label>Departamento</Label>
-                    <Input value={novoDepartamento} onChange={(e) => setNovoDepartamento(e.target.value)} placeholder="Ex: TI, RH..." />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                        <Label>Unidade</Label>
-                        <Select value={novaUnidade} onValueChange={setNovaUnidade}>
-                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                            <SelectContent>
-                                {unidades.map((u) => (
-                                    <SelectItem key={u.idUnidade} value={String(u.idUnidade)}>{u.descricaoUnidade}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label>Perfil</Label>
-                        <Select value={novoPerfil} onValueChange={setNovoPerfil}>
-                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                            <SelectContent>
-                                {perfis.map((p) => (
-                                    <SelectItem key={p.idPerfil} value={String(p.idPerfil)}>{p.descricaoPerfil}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreate} disabled={isPending}>{isPending ? "Salvando..." : "Salvar"}</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
     </div>
   )
 }
