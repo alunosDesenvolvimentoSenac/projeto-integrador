@@ -82,9 +82,9 @@ export function LoginForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Sistema de Agendamento</h1>
+          <h1 className="text-2xl font-bold">Sistema de Agendamento de Salas</h1>
           <p className="text-muted-foreground text-sm text-balance">
-            Acesse o sistema de agendamento de salas do Senac Poços de Caldas
+            Acesse o Sistema de Agendamento de Salas do Senac Poçsos de Caldas
           </p>
         </div>
 

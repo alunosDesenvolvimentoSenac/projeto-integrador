@@ -69,15 +69,6 @@ const DATA_MENU = {
       ],
     },
     {
-      title: "Salas",
-      url: "#",
-      icon: LayoutGrid,
-      items: [
-        { title: "Cadastrar Salas", url: "/cadastroSalas" },
-        { title: "Consultar Salas", url: "/cadastroSalas/exibirSalas" },
-      ],
-    },
-    {
       title: "Unidades",
       url: "#",
       icon: Building,
@@ -86,7 +77,15 @@ const DATA_MENU = {
         { title: "Consultar Unidades", url: "/cadastroUnidade/exibirUnidade" },
       ],
     },
-    
+    {
+      title: "Salas",
+      url: "#",
+      icon: LayoutGrid,
+      items: [
+        { title: "Cadastrar Salas", url: "/cadastroSalas" },
+        { title: "Consultar Salas", url: "/cadastroSalas/exibirSalas" },
+      ],
+    },
     {
       title: "Equipamentos",
       url: "#",
