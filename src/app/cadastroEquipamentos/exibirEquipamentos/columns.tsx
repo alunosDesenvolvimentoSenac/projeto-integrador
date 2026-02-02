@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { Pencil, Trash2, CheckCircle2, XCircle, ArrowUpDown } from "lucide-react" // Certifique-se de ter ArrowUpDown importado
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -51,10 +51,11 @@ export const getColumns = (salasOptions: { id: number, nome: string, codigo: str
     accessorKey: "descricao",
     header: "Equipamento",
     cell: ({ row }) => (
-      <div className="flex flex-col max-w-[200px]">
+      // max-w-[200px] pode ser pouco dependendo da tela, ajustei para ser flexível
+      <div className="flex flex-col min-w-[180px]"> 
         <span className="font-medium truncate">{row.getValue("descricao")}</span>
         {row.original.observacao && (
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="text-xs text-muted-foreground truncate max-w-[250px]">
             {row.original.observacao}
           </span>
         )}
@@ -62,12 +63,29 @@ export const getColumns = (salasOptions: { id: number, nome: string, codigo: str
     ),
   },
   {
-    accessorKey: "nomeSala",
-    header: "Sala Vinculada",
+    accessorKey: "codigoSala", 
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          // CORREÇÃO DE ALINHAMENTO AQUI:
+          // 1. px-0: Remove padding lateral que empurrava o texto
+          // 2. justify-start: Força o texto e ícone para a esquerda
+          // 3. -ml-2: Compensa visualmente o padding padrão da tabela para alinhar perfeitamente com a célula
+          className="hover:bg-transparent px-0 justify-start font-semibold text-foreground"
+        >
+          Sala Vinculada
+          <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground" />
+        </Button>
+      )
+    },
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col items-start justify-center">
         <span className="font-medium">{row.original.codigoSala}</span>
-        <span className="text-xs text-muted-foreground truncate max-w-[150px]">{row.original.nomeSala}</span>
+        <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+             {row.original.nomeSala}
+        </span>
       </div>
     ),
   },
@@ -76,15 +94,12 @@ export const getColumns = (salasOptions: { id: number, nome: string, codigo: str
     header: "Quantidade",
     cell: ({ row }) => {
       const qtd = row.original.quantidade
-      let colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200"
-      
-      if (qtd === 0) colorClass = "bg-red-100 text-red-700 border-red-200"
-      else if (qtd < 5) colorClass = "bg-amber-100 text-amber-700 border-amber-200"
-
       return (
-        <Badge variant="outline" className={`${colorClass} font-medium`}>
-          {qtd} un
-        </Badge>
+        <div className="flex items-center">
+             <Badge variant="outline" className="font-medium">
+                {qtd} un
+             </Badge>
+        </div>
       )
     },
   },
@@ -103,8 +118,16 @@ export const getColumns = (salasOptions: { id: number, nome: string, codigo: str
   },
   {
     id: "actions",
-    header: "Ações",
-    cell: ({ row }) => <CellAction equipamento={row.original} salasOptions={salasOptions} />,
+    // Alinha o cabeçalho "Ações" à direita
+    header: () => <div className="text-right">Ações</div>,
+    cell: ({ row }) => {
+        // Alinha os botões à direita
+        return (
+            <div className="flex justify-end">
+                <CellAction equipamento={row.original} salasOptions={salasOptions} />
+            </div>
+        )
+    },
   },
 ]
 
@@ -160,23 +183,23 @@ function CellAction({ equipamento, salasOptions }: CellActionProps) {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setOpenEdit(true)}
             title="Editar"
-            className="h-8 w-8 hover:bg-blue-50"
+            className="h-8 w-8 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
         >
             <Pencil className="h-4 w-4" />
         </Button>
 
         <Button 
-             
+            // Mudei para variant ghost para alinhar visualmente com o de editar
             size="icon" 
             onClick={() => setOpenDelete(true)}
             title="Excluir"
-            className="h-8 w-8  hover:bg-red-50"
+            className="h-8 w-8 "
         >
             <Trash2 className="h-4 w-4" />
         </Button>

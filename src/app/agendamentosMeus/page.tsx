@@ -138,48 +138,54 @@ export default function MeusAgendamentosPage() {
 
   // 3. LOGICA CHECKLIST
   const handleOpenReport = async (itemOrGroup: Agendamento | GroupedItem, isSeries: boolean) => {
-      setIsReportOpen(true);
-      setReportLoading(true); 
+    setIsReportOpen(true);
+    setReportLoading(true);
 
-      let targetLabId: number | undefined;
-      let agendamentoInfo: any = {};
+    let targetLabId: number | undefined;
+    let agendamentoInfo: any = {};
 
-      if (isSeries) {
-          const group = itemOrGroup as any;
-          const firstItem = group.items[0];
-          targetLabId = firstItem.labId;
-          agendamentoInfo = {
-              isSeries: true,
-              count: group.items.length,
-              dateStart: new Date(group.items[0].ano, group.items[0].mes, group.items[0].dia),
-              dateEnd: new Date(group.items[group.items.length - 1].ano, group.items[group.items.length - 1].mes, group.items[group.items.length - 1].dia),
-              groupId: group.id
-          };
-      } else {
-          const item = itemOrGroup as Agendamento;
-          targetLabId = item.labId;
-          agendamentoInfo = { 
-              isSeries: false, 
-              dateStart: new Date(item.ano, item.mes, item.dia), 
-              idAgendamento: item.id 
-          };
-      }
+    if (isSeries) {
+        const group = itemOrGroup as any;
+        const firstItem = group.items[0];
+        targetLabId = firstItem.labId;
+        agendamentoInfo = {
+            isSeries: true,
+            count: group.items.length,
+            dateStart: new Date(group.items[0].ano, group.items[0].mes, group.items[0].dia),
+            dateEnd: new Date(group.items[group.items.length - 1].ano, group.items[group.items.length - 1].mes, group.items[group.items.length - 1].dia),
+            groupId: group.id
+        };
+    } else {
+        const item = itemOrGroup as Agendamento;
+        targetLabId = item.labId;
+        agendamentoInfo = {
+            isSeries: false,
+            dateStart: new Date(item.ano, item.mes, item.dia),
+            idAgendamento: item.id
+        };
+    }
 
-      try {
-          if (targetLabId) {
-             const equipamentos = await getEquipamentosDaSalaAction(targetLabId);
-             setReportData({ equipamentos: equipamentos || [], dadosAgendamento: agendamentoInfo });
-          } else {
-             setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
-          }
-      } catch (error) {
-          console.error("Erro ao buscar equipamentos:", error);
-          toast.error("Erro ao carregar equipamentos da sala.");
-          setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
-      } finally {
-          setReportLoading(false);
-      }
-  }
+    try {
+        if (targetLabId) {
+            const equipamentos = await getEquipamentosDaSalaAction(targetLabId);
+            
+            // --- ALTERAÇÃO AQUI: FILTRAR APENAS OS ATIVOS ---
+            const equipamentosAtivos = equipamentos 
+                ? equipamentos.filter((eq: any) => eq.ativo === true) 
+                : [];
+            
+            setReportData({ equipamentos: equipamentosAtivos, dadosAgendamento: agendamentoInfo });
+        } else {
+            setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
+        }
+    } catch (error) {
+        console.error("Erro ao buscar equipamentos:", error);
+        toast.error("Erro ao carregar equipamentos da sala.");
+        setReportData({ equipamentos: [], dadosAgendamento: agendamentoInfo });
+    } finally {
+        setReportLoading(false);
+    }
+}
 
   const handleSubmitReport = async (data: any) => {
       if (!reportData) return;

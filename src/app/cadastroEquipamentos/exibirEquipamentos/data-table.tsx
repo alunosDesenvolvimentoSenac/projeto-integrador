@@ -1,6 +1,9 @@
 "use client"
 
+import * as React from "react" // 1. Importar React para usar useState
 import {
+  SortingState, // 2. Importar tipos e funções de ordenação
+  getSortedRowModel,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -15,7 +18,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// Importamos a função e o tipo do arquivo columns
 import { getColumns, Equipamento } from "./columns"
 
 interface DataTableProps {
@@ -24,13 +26,28 @@ interface DataTableProps {
 }
 
 export function DataTable({ data, salasOptions }: DataTableProps) {
-  // Chamamos getColumns AQUI, no cliente
+  // 3. DEFINIR O ESTADO INICIAL DE ORDENAÇÃO
+  // id: "nomeSala" deve ser IGUAL ao accessorKey definido no columns.tsx
+  // desc: false significa ASCENDENTE (A-Z)
+  const [sorting, setSorting] = React.useState<SortingState>([
+    {
+      id: "codigoSala",
+      desc: false, 
+    },
+  ])
+
   const columns = getColumns(salasOptions)
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    // 4. ADICIONAR O MODELO DE ORDENAÇÃO
+    getSortedRowModel: getSortedRowModel(), 
+    onSortingChange: setSorting, // Permite que o usuário mude a ordem clicando
+    state: {
+      sorting, // Passa o estado atual
+    },
   })
 
   return (

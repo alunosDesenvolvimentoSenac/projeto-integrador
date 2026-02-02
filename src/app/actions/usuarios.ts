@@ -78,6 +78,11 @@ export async function updateUsuarioAction(id: number, data: {
       })
       .where(eq(usuarios.idUsuario, id));
 
+      
+      
+      
+
+
     // Revalida a página para atualizar a tabela imediatamente
     revalidatePath("/cadastroUsuarios/exibirUsuarios");
     
@@ -115,5 +120,8 @@ export async function deleteUsuarioAction(id: number) {
 }
 
 export async function getPerfisOptionsAction() {
-    return await db.select().from(perfis);
+    return await db
+    .select()
+    .from(perfis)
+    .orderBy(asc(perfis.descricaoPerfil));
 }
