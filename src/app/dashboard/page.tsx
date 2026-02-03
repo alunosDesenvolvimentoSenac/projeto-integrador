@@ -457,7 +457,7 @@ export default function DashboardView() {
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-orange-500"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Tarde</span></div>
              <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-zinc-900 dark:bg-zinc-100"></span><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Noite</span></div>
              <div className="h-3 w-[1px] bg-zinc-300 dark:bg-zinc-700 hidden sm:block"></div>
-             <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Confirmado</span></div>
+             
              <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500"></div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Pendente</span></div>
              <div className="flex items-center gap-2 ml-auto"><span className="h-3 w-3 rounded-[2px] bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50"></span><span className="text-xs font-medium text-muted-foreground">Fim de Semana</span></div>
           </div>
