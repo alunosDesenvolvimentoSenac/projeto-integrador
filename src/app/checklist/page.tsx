@@ -279,11 +279,11 @@ function RelatoriosContent() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Sistema</BreadcrumbLink>
+                <BreadcrumbLink>Checklists</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Gestão de Relatórios</BreadcrumbPage>
+                <BreadcrumbPage>Histórico</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

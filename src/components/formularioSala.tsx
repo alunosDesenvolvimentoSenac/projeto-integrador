@@ -127,7 +127,7 @@ export function FormularioSala({ unidades, areas, className, ...props }: Formula
             {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Salas</h1>
-              <p className="text-sm text-muted-foreground">Adicione novos laboratórios ou salas</p>
+              <p className="text-sm text-muted-foreground">Cadastre novos laboratórios ou salas</p>
             </div>
 
             <div className="flex flex-col gap-6">

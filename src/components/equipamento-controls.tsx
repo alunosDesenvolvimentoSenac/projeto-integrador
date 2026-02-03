@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react";
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, Filter, Plus, X } from "lucide-react"
@@ -63,6 +64,14 @@ export function EquipamentoControls({ salas }: EquipamentoControlsProps) {
     router.replace("?")
   }
 
+  // Cria uma cópia da lista e ordena pelo código
+const salasOrdenadas = useMemo(() => {
+    return [...salas].sort((a, b) => {
+        // O localeCompare com numeric: true garante que "Sala 2" venha antes de "Sala 10"
+        return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+    });
+}, [salas]);
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho com Título e Botão Novo */}
@@ -93,7 +102,8 @@ export function EquipamentoControls({ salas }: EquipamentoControlsProps) {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">Todas as Salas</SelectItem>
-                    {salas.map((s) => (
+                    {/* AQUI: Mapeie sobre salasOrdenadas ao invés de salas */}
+                    {salasOrdenadas.map((s) => (
                         <SelectItem key={s.id} value={String(s.id)}>
                             {s.codigo} - {s.nome}
                         </SelectItem>

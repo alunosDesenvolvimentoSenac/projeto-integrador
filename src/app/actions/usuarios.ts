@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { usuarios, perfis } from "@/db/migrations/schema"; 
 import { asc, eq, ilike, or, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { adminAuth } from "@/lib/firebase-admin"
 
 type FiltrosUsuario = {
   term?: string;
@@ -105,12 +106,38 @@ export async function toggleStatusUsuarioAction(id: number, novoStatus: boolean)
 
 export async function deleteUsuarioAction(id: number) {
   try {
+    // 1. Buscar o UID do usuário no banco antes de excluir
+    const usuarioParaDeletar = await db
+      .select({ uid: usuarios.uidFirebase }) // Certifique-se que o nome da coluna é uidFirebase ou uid
+      .from(usuarios)
+      .where(eq(usuarios.idUsuario, id))
+      .limit(1);
+
+    if (!usuarioParaDeletar.length) {
+      throw new Error("Usuário não encontrado no banco.");
+    }
+
+    const uid = usuarioParaDeletar[0].uid;
+
+    // 2. Excluir do Firebase Auth (se tiver UID)
+    if (uid) {
+      try {
+        await adminAuth.deleteUser(uid);
+        console.log(`Usuário ${uid} excluído do Firebase.`);
+      } catch (firebaseError) {
+        console.error("Erro ao excluir do Firebase (pode já não existir):", firebaseError);
+        // Não damos throw aqui para garantir que exclua do banco mesmo se falhar no firebase (limpeza de orfãos)
+      }
+    }
+
+    // 3. Excluir do Banco de Dados (Neon)
     await db.delete(usuarios).where(eq(usuarios.idUsuario, id));
+
     revalidatePath("/cadastroUsuarios/exibirUsuarios");
     return { success: true };
   } catch (error) {
     console.error("Erro ao deletar usuário:", error);
-    return { success: false, error: "Não foi possível excluir o usuário." };
+    throw new Error("Falha ao excluir usuário.");
   }
 }
 

@@ -84,7 +84,7 @@ export function FormularioUnidade({ className, ...props }: React.ComponentPropsW
             {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Unidades</h1>
-              <p className="text-sm text-muted-foreground">Registre uma nova unidade do Senac</p>
+              <p className="text-sm text-muted-foreground">Cadastre uma nova unidade do Senac</p>
             </div>
 
             <div className="flex flex-col gap-6">

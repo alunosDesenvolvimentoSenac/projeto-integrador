@@ -132,7 +132,7 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
             {/* Cabeçalho */}
             <div className="flex flex-col items-center gap-2">
               <h1 className="text-xl font-bold">Cadastro de Equipamentos</h1>
-              <p className="text-sm text-muted-foreground">Registre novos itens e vincule a uma sala</p>
+              <p className="text-sm text-muted-foreground">Cadastre novos itens e vincule a uma sala</p>
             </div>
 
             <div className="flex flex-col gap-6">
@@ -178,7 +178,7 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 name="salaId"
                 render={({ field }) => (
                   <FormItem className="grid gap-2 space-y-0">
-                    <FormLabel>Sala / Localização</FormLabel>
+                    <FormLabel>Sala</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -204,7 +204,7 @@ export function FormularioEquipamento({ salas, className, ...props }: Formulario
                 name="observacao"
                 render={({ field }) => (
                   <FormItem className="grid gap-2 space-y-0">
-                    <FormLabel>Observação (Opcional)</FormLabel>
+                    <FormLabel>Observação</FormLabel>
                     <FormControl>
                       {/* Pode usar Input normal aqui se preferir */}
                       <Textarea 
