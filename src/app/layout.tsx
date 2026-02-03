@@ -4,6 +4,7 @@ import "./globals.css";
 // 1. ALTERAÇÃO AQUI: Importe do componente UI que criamos acima, e NÃO direto da biblioteca 'sonner'
 import { Toaster } from "@/components/ui/sonner"; 
 import { UserProvider } from "@/components/user-provider";
+import { AuthGuard } from "@/components/auth-guard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,11 +22,9 @@ export default function RootLayout({
     <html lang="pt-br">
       <body className={inter.className}>
         <UserProvider>
+          <AuthGuard>
             {children}
-            {/* 2. ALTERAÇÃO AQUI: 
-               - theme="dark": Força o fundo preto e texto branco.
-               - richColors={false}: Garante o visual neutro (sem fundos verdes/vermelhos).
-            */}
+          </AuthGuard>
             <Toaster 
               theme="dark" 
               richColors={false} 
