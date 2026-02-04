@@ -31,9 +31,13 @@ export default async function Page(props: { searchParams: SearchParams }) {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block"><BreadcrumbLink href="#">Salas</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="#">Salas</BreadcrumbLink>
+                </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem><BreadcrumbPage>Consultar Salas</BreadcrumbPage></BreadcrumbItem>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Consultar Salas</BreadcrumbPage>
+                </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
@@ -41,10 +45,9 @@ export default async function Page(props: { searchParams: SearchParams }) {
         
         <div className="flex-1">
           <div className="container mx-auto py-6 px-4 md:py-10 space-y-4">
-             {/* Passa as opções para os controles (Botão Novo) */}
+             {/* Agora SalaControls ACEITA as props areas e unidades */}
              <SalaControls areas={areasOptions} unidades={unidadesOptions} />
              
-             {/* Passa as opções e dados para a tabela. A tabela gera as colunas. */}
              <DataTable 
                 data={data} 
                 areasOptions={areasOptions} 

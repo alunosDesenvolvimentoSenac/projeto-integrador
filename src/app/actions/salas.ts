@@ -100,6 +100,32 @@ export async function updateSalaAction(id: number, data: UpdateSalaDTO) {
   }
 }
 
+interface CreateSalaDTO {
+    nome: string;
+    codigo: string;
+    capacidade: number;
+    idArea: number;
+    idUnidade: number;
+}
+
+export async function createSalaAction(data: CreateSalaDTO) {
+  try {
+    await db.insert(salas).values({
+      descricaoSala: data.nome,
+      codigoSala: data.codigo,
+      capacidade: data.capacidade,
+      idArea: data.idArea,
+      idUnidade: data.idUnidade,
+      status: true // Padrão ativo ao criar
+    });
+
+    revalidatePath("/cadastroSalas/exibirSalas");
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao criar sala:", error);
+    return { success: false, error: "Erro ao cadastrar sala." };
+  }
+}
 // --- 4. EXCLUSÃO ---
 
 export async function deleteSalaAction(id: number) {
